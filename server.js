@@ -182,7 +182,7 @@ let products = loadData(PRODUCTS_FILE, [
     brand: '로지텍',
     price: 129000,
     stockQuantity: 15,
-    status: '활성',
+    status: '정품',
     description: '고급 무선 마우스, 8K DPI 센서, USB-C 충전',
     imageUrl: '',
     registrationDate: new Date('2024-01-10')
@@ -194,7 +194,7 @@ let products = loadData(PRODUCTS_FILE, [
     brand: '키크론',
     price: 159000,
     stockQuantity: 10,
-    status: '활성',
+    status: '직구',
     description: '텐키리스 기계식 키보드, 무선/유선 겸용, RGB 백라이트',
     imageUrl: '',
     registrationDate: new Date('2024-02-15')
@@ -206,7 +206,7 @@ let products = loadData(PRODUCTS_FILE, [
     brand: 'LG',
     price: 450000,
     stockQuantity: 5,
-    status: '활성',
+    status: '정품',
     description: '27인치 QHD 나노IPS 게이밍 모니터, 144Hz, 1ms',
     imageUrl: '',
     registrationDate: new Date('2024-03-20')

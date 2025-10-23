@@ -249,17 +249,25 @@
                             <input type="text" id="productName" name="name" required placeholder="제품명을 입력하세요">
                         </div>
                         <div class="form-group">
-                            <label for="productCategory" class="required">카테고리</label>
-                            <select id="productCategory" name="category" required>
-                                <option value="">카테고리 선택</option>
-                                <option value="PC">PC</option>
-                                <option value="노트북">노트북</option>
-                                <option value="모니터">모니터</option>
-                                <option value="키보드">키보드</option>
-                                <option value="마우스">마우스</option>
-                                <option value="스피커">스피커</option>
-                                <option value="웹캠">웹캠</option>
+                            <label for="productMainCategory" class="required">대분류</label>
+                            <select id="productMainCategory" name="mainCategory" required onchange="updateProductSubCategories()">
+                                <option value="">대분류 선택</option>
+                                <option value="하드웨어">하드웨어</option>
+                                <option value="소프트웨어">소프트웨어</option>
+                                <option value="액세서리">액세서리</option>
                                 <option value="기타">기타</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="productSubCategory" class="required">중분류</label>
+                            <select id="productSubCategory" name="subCategory" required onchange="updateProductDetailCategories()" disabled>
+                                <option value="">중분류 선택</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="productDetailCategory" class="required">소분류</label>
+                            <select id="productDetailCategory" name="detailCategory" required disabled>
+                                <option value="">소분류 선택</option>
                             </select>
                         </div>
                     </div>
@@ -272,8 +280,10 @@
                         <div class="form-group">
                             <label for="productStatus">상태</label>
                             <select id="productStatus" name="status">
-                                <option value="활성">활성</option>
-                                <option value="비활성">비활성</option>
+                                <option value="정품">정품</option>
+                                <option value="벌크">벌크</option>
+                                <option value="직구">직구</option>
+                                <option value="중고">중고</option>
                             </select>
                         </div>
                     </div>
@@ -491,6 +501,81 @@
                     messageDiv.remove();
                 }
             }, 5000);
+        }
+
+        // 3단계 카테고리 데이터 (제품 등록용)
+        const productCategoryData = {
+            '하드웨어': {
+                'PC': ['데스크톱', '워크스테이션', '서버'],
+                '노트북': ['게이밍노트북', '비즈니스노트북', '울트라북'],
+                '모니터': ['게이밍모니터', '사무용모니터', '4K모니터'],
+                '기타': ['CPU', '메모리', '그래픽카드']
+            },
+            '소프트웨어': {
+                '운영체제': ['Windows', 'macOS', 'Linux'],
+                '오피스': ['Microsoft Office', '한글', 'LibreOffice'],
+                '보안': ['백신', '방화벽', '암호화'],
+                '기타': ['게임', '편집툴', '개발툴']
+            },
+            '액세서리': {
+                '키보드': ['기계식', '멤브레인', '무선'],
+                '마우스': ['게이밍마우스', '무선마우스', '트랙볼'],
+                '스피커': ['게이밍스피커', '블루투스스피커', '홈시어터'],
+                '기타': ['헤드셋', '웹캠', '충전기']
+            },
+            '기타': {
+                '기타': ['기타']
+            }
+        };
+
+        // 제품 등록용 중분류 업데이트
+        function updateProductSubCategories() {
+            const mainCategory = document.getElementById('productMainCategory').value;
+            const subCategorySelect = document.getElementById('productSubCategory');
+            const detailCategorySelect = document.getElementById('productDetailCategory');
+            
+            // 중분류 초기화
+            subCategorySelect.innerHTML = '<option value="">중분류 선택</option>';
+            detailCategorySelect.innerHTML = '<option value="">소분류 선택</option>';
+            detailCategorySelect.disabled = true;
+            
+            if (mainCategory && productCategoryData[mainCategory]) {
+                subCategorySelect.disabled = false;
+                
+                // 중분류 옵션 추가
+                Object.keys(productCategoryData[mainCategory]).forEach(subCategory => {
+                    const option = document.createElement('option');
+                    option.value = subCategory;
+                    option.textContent = subCategory;
+                    subCategorySelect.appendChild(option);
+                });
+            } else {
+                subCategorySelect.disabled = true;
+            }
+        }
+
+        // 제품 등록용 소분류 업데이트
+        function updateProductDetailCategories() {
+            const mainCategory = document.getElementById('productMainCategory').value;
+            const subCategory = document.getElementById('productSubCategory').value;
+            const detailCategorySelect = document.getElementById('productDetailCategory');
+            
+            // 소분류 초기화
+            detailCategorySelect.innerHTML = '<option value="">소분류 선택</option>';
+            
+            if (mainCategory && subCategory && productCategoryData[mainCategory] && productCategoryData[mainCategory][subCategory]) {
+                detailCategorySelect.disabled = false;
+                
+                // 소분류 옵션 추가
+                productCategoryData[mainCategory][subCategory].forEach(detailCategory => {
+                    const option = document.createElement('option');
+                    option.value = detailCategory;
+                    option.textContent = detailCategory;
+                    detailCategorySelect.appendChild(option);
+                });
+            } else {
+                detailCategorySelect.disabled = true;
+            }
         }
 
         // 페이지 로드 시 사용자 상태 확인

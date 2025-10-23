@@ -135,9 +135,106 @@ function searchProducts() {
     loadProducts(1);
 }
 
+// 3단계 카테고리 데이터
+const categoryData = {
+    '하드웨어': {
+        'PC': ['데스크톱', '워크스테이션', '서버'],
+        '노트북': ['게이밍노트북', '비즈니스노트북', '울트라북'],
+        '모니터': ['게이밍모니터', '사무용모니터', '4K모니터'],
+        '기타': ['CPU', '메모리', '그래픽카드']
+    },
+    '소프트웨어': {
+        '운영체제': ['Windows', 'macOS', 'Linux'],
+        '오피스': ['Microsoft Office', '한글', 'LibreOffice'],
+        '보안': ['백신', '방화벽', '암호화'],
+        '기타': ['게임', '편집툴', '개발툴']
+    },
+    '액세서리': {
+        '키보드': ['기계식', '멤브레인', '무선'],
+        '마우스': ['게이밍마우스', '무선마우스', '트랙볼'],
+        '스피커': ['게이밍스피커', '블루투스스피커', '홈시어터'],
+        '기타': ['헤드셋', '웹캠', '충전기']
+    },
+    '기타': {
+        '기타': ['기타']
+    }
+};
+
+// 하위 카테고리 업데이트
+function updateSubCategories() {
+    const mainCategory = document.getElementById('mainCategoryFilter').value;
+    const subCategorySelect = document.getElementById('subCategoryFilter');
+    const detailCategorySelect = document.getElementById('detailCategoryFilter');
+    
+    // 하위 카테고리 초기화
+    subCategorySelect.innerHTML = '<option value="">하위 카테고리</option>';
+    detailCategorySelect.innerHTML = '<option value="">상세 카테고리</option>';
+    detailCategorySelect.disabled = true;
+    
+    if (mainCategory && categoryData[mainCategory]) {
+        subCategorySelect.disabled = false;
+        
+        // 하위 카테고리 옵션 추가
+        Object.keys(categoryData[mainCategory]).forEach(subCategory => {
+            const option = document.createElement('option');
+            option.value = subCategory;
+            option.textContent = subCategory;
+            subCategorySelect.appendChild(option);
+        });
+    } else {
+        subCategorySelect.disabled = true;
+    }
+    
+    // 필터 초기화
+    currentCategory = '';
+    loadProducts(1);
+}
+
+// 상세 카테고리 업데이트
+function updateDetailCategories() {
+    const mainCategory = document.getElementById('mainCategoryFilter').value;
+    const subCategory = document.getElementById('subCategoryFilter').value;
+    const detailCategorySelect = document.getElementById('detailCategoryFilter');
+    
+    // 상세 카테고리 초기화
+    detailCategorySelect.innerHTML = '<option value="">상세 카테고리</option>';
+    
+    if (mainCategory && subCategory && categoryData[mainCategory] && categoryData[mainCategory][subCategory]) {
+        detailCategorySelect.disabled = false;
+        
+        // 상세 카테고리 옵션 추가
+        categoryData[mainCategory][subCategory].forEach(detailCategory => {
+            const option = document.createElement('option');
+            option.value = detailCategory;
+            option.textContent = detailCategory;
+            detailCategorySelect.appendChild(option);
+        });
+    } else {
+        detailCategorySelect.disabled = true;
+    }
+    
+    // 필터 초기화
+    currentCategory = '';
+    loadProducts(1);
+}
+
 // 제품 필터링
 function filterProducts() {
-    currentCategory = document.getElementById('categoryFilter').value;
+    const mainCategory = document.getElementById('mainCategoryFilter').value;
+    const subCategory = document.getElementById('subCategoryFilter').value;
+    const detailCategory = document.getElementById('detailCategoryFilter').value;
+    
+    // 카테고리 조합
+    if (detailCategory) {
+        currentCategory = `${mainCategory}-${subCategory}-${detailCategory}`;
+    } else if (subCategory) {
+        currentCategory = `${mainCategory}-${subCategory}`;
+    } else if (mainCategory) {
+        currentCategory = mainCategory;
+    } else {
+        currentCategory = '';
+    }
+    
     currentStatus = document.getElementById('statusFilter').value;
     loadProducts(1);
 }
@@ -145,8 +242,19 @@ function filterProducts() {
 // 필터 초기화
 function clearProductFilters() {
     document.getElementById('productSearch').value = '';
-    document.getElementById('categoryFilter').value = '';
+    document.getElementById('mainCategoryFilter').value = '';
+    document.getElementById('subCategoryFilter').value = '';
+    document.getElementById('detailCategoryFilter').value = '';
     document.getElementById('statusFilter').value = '';
+    
+    // 카테고리 필터 비활성화
+    document.getElementById('subCategoryFilter').disabled = true;
+    document.getElementById('detailCategoryFilter').disabled = true;
+    
+    // 하위 카테고리 초기화
+    document.getElementById('subCategoryFilter').innerHTML = '<option value="">하위 카테고리</option>';
+    document.getElementById('detailCategoryFilter').innerHTML = '<option value="">상세 카테고리</option>';
+    
     currentSearch = '';
     currentCategory = '';
     currentStatus = '';

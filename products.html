@@ -34,21 +34,25 @@
         
         <div class="search-filter">
             <input type="text" id="productSearch" placeholder="제품명, 브랜드로 검색..." onkeyup="searchProducts()">
-            <select id="categoryFilter" onchange="filterProducts()">
+            <select id="mainCategoryFilter" onchange="updateSubCategories()">
                 <option value="">전체 카테고리</option>
-                <option value="PC">PC</option>
-                <option value="노트북">노트북</option>
-                <option value="모니터">모니터</option>
-                <option value="키보드">키보드</option>
-                <option value="마우스">마우스</option>
-                <option value="스피커">스피커</option>
-                <option value="웹캠">웹캠</option>
+                <option value="하드웨어">하드웨어</option>
+                <option value="소프트웨어">소프트웨어</option>
+                <option value="액세서리">액세서리</option>
                 <option value="기타">기타</option>
+            </select>
+            <select id="subCategoryFilter" onchange="updateDetailCategories()" disabled>
+                <option value="">하위 카테고리</option>
+            </select>
+            <select id="detailCategoryFilter" onchange="filterProducts()" disabled>
+                <option value="">상세 카테고리</option>
             </select>
             <select id="statusFilter" onchange="filterProducts()">
                 <option value="">전체 상태</option>
-                <option value="활성">활성</option>
-                <option value="비활성">비활성</option>
+                <option value="정품">정품</option>
+                <option value="벌크">벌크</option>
+                <option value="직구">직구</option>
+                <option value="중고">중고</option>
             </select>
             <button class="btn btn-primary" onclick="window.open('product-add.html', '_blank', 'width=900,height=800,scrollbars=yes,resizable=yes')">+ 새 제품 등록</button>
         </div>
