@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "name": "김철수",
+    "company": "ABC 컴퓨터",
+    "businessNumber": "123-45-67890",
+    "phone": "010-1234-5678",
+    "email": "kim@example.com",
+    "address": "서울시 강남구",
+    "managementNumber": "CUST-001",
+    "registrationDate": "2024-01-15T00:00:00.000Z",
+    "lastVisit": "2024-10-01T00:00:00.000Z",
+    "totalSpent": 150000,
+    "visitCount": 5,
+    "status": "활성",
+    "notes": "정기 고객"
+  },
+  {
+    "id": 2,
+    "name": "이영희",
+    "company": "XYZ 시스템",
+    "businessNumber": "987-65-43210",
+    "phone": "010-9876-5432",
+    "email": "lee@example.com",
+    "address": "서울시 서초구",
+    "managementNumber": "CUST-002",
+    "registrationDate": "2024-03-20T00:00:00.000Z",
+    "lastVisit": "2024-09-28T00:00:00.000Z",
+    "totalSpent": 85000,
+    "visitCount": 3,
+    "status": "활성",
+    "notes": "노트북 수리"
+  },
+  {
+    "id": 1759925543792,
+    "name": "강현우",
+    "company": "",
+    "businessNumber": "",
+    "phone": "010-4195-8049/010-8897-2019",
+    "email": "",
+    "address": "서울시 강서구 공항대로59길 64 201동 1802호 (등촌동, 한사랑2차삼성아파트)",
+    "managementNumber": "132401608168",
+    "registrationDate": "2025-10-08T12:12:23.792Z",
+    "lastVisit": null,
+    "totalSpent": 0,
+    "visitCount": 0,
+    "status": "활성",
+    "notes": ""
+  }
+]

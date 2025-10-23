@@ -1,0 +1,393 @@
+// 제품 관리 관련 변수
+let currentPage = 1;
+let currentSearch = '';
+let currentCategory = '';
+let currentStatus = '';
+let editingProductId = null;
+
+// 페이지 로드 시 초기화
+window.addEventListener('load', () => {
+    checkUserStatus();
+    loadProducts();
+});
+
+// 사용자 상태 확인
+async function checkUserStatus() {
+    try {
+        const response = await fetch('/api/check-auth', {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            document.getElementById('userName').textContent = result.user.name;
+        } else {
+            window.location.href = 'index.html';
+        }
+    } catch (error) {
+        window.location.href = 'index.html';
+    }
+}
+
+// 제품 목록 로드
+async function loadProducts(page = 1) {
+    try {
+        const params = new URLSearchParams({
+            page: page,
+            limit: 10,
+            search: currentSearch,
+            category: currentCategory,
+            status: currentStatus
+        });
+        
+        const response = await fetch(`/api/products?${params}`, {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            displayProducts(result.data);
+            displayPagination(result.pagination);
+            currentPage = page;
+        } else {
+            showMessage('제품 목록을 불러오는데 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('제품 로드 오류:', error);
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 제품 목록 표시
+function displayProducts(products) {
+    const tbody = document.getElementById('productsTableBody');
+    tbody.innerHTML = '';
+    
+    if (products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #666;">등록된 제품이 없습니다.</td></tr>';
+        return;
+    }
+    
+    products.forEach(product => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${product.name}</td>
+            <td>${product.category}</td>
+            <td>${product.brand || '-'}</td>
+            <td>${product.price.toLocaleString('ko-KR')}원</td>
+            <td>${product.stockQuantity}</td>
+            <td><span class="status-badge status-${product.status === '활성' ? 'active' : 'inactive'}">${product.status}</span></td>
+            <td>
+                <div class="action-buttons">
+                    <button class="action-btn view-btn" onclick="viewProductDetail(${product.id})">상세</button>
+                    <button class="action-btn edit-btn" onclick="editProduct(${product.id})">수정</button>
+                    <button class="action-btn delete-btn" onclick="deleteProduct(${product.id})">삭제</button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// 페이지네이션 표시
+function displayPagination(pagination) {
+    const paginationDiv = document.getElementById('pagination');
+    paginationDiv.innerHTML = '';
+    
+    if (pagination.totalPages <= 1) return;
+    
+    // 이전 버튼
+    const prevBtn = document.createElement('button');
+    prevBtn.textContent = '이전';
+    prevBtn.disabled = pagination.currentPage === 1;
+    prevBtn.onclick = () => loadProducts(pagination.currentPage - 1);
+    paginationDiv.appendChild(prevBtn);
+    
+    // 페이지 번호들
+    const startPage = Math.max(1, pagination.currentPage - 2);
+    const endPage = Math.min(pagination.totalPages, pagination.currentPage + 2);
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.textContent = i;
+        pageBtn.className = i === pagination.currentPage ? 'active' : '';
+        pageBtn.onclick = () => loadProducts(i);
+        paginationDiv.appendChild(pageBtn);
+    }
+    
+    // 다음 버튼
+    const nextBtn = document.createElement('button');
+    nextBtn.textContent = '다음';
+    nextBtn.disabled = pagination.currentPage === pagination.totalPages;
+    nextBtn.onclick = () => loadProducts(pagination.currentPage + 1);
+    paginationDiv.appendChild(nextBtn);
+    
+    // 페이지 정보
+    const info = document.createElement('span');
+    info.className = 'pagination-info';
+    info.textContent = `${pagination.currentPage} / ${pagination.totalPages} 페이지 (총 ${pagination.totalItems}개)`;
+    paginationDiv.appendChild(info);
+}
+
+// 제품 검색
+function searchProducts() {
+    currentSearch = document.getElementById('productSearch').value;
+    loadProducts(1);
+}
+
+// 제품 필터링
+function filterProducts() {
+    currentCategory = document.getElementById('categoryFilter').value;
+    currentStatus = document.getElementById('statusFilter').value;
+    loadProducts(1);
+}
+
+// 필터 초기화
+function clearProductFilters() {
+    document.getElementById('productSearch').value = '';
+    document.getElementById('categoryFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    currentSearch = '';
+    currentCategory = '';
+    currentStatus = '';
+    loadProducts(1);
+}
+
+// 새 제품 등록 모달 표시
+function showAddProductModal() {
+    document.getElementById('productModalTitle').textContent = '새 제품 등록';
+    document.getElementById('productForm').reset();
+    document.getElementById('imagePreview').style.display = 'none';
+    editingProductId = null;
+    document.getElementById('productModal').style.display = 'flex';
+}
+
+// 제품 수정 모달 표시
+async function editProduct(productId) {
+    try {
+        const response = await fetch(`/api/products/${productId}`, {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            const product = result.data;
+            document.getElementById('productModalTitle').textContent = '제품 정보 수정';
+            document.getElementById('productName').value = product.name;
+            document.getElementById('productCategory').value = product.category;
+            document.getElementById('productBrand').value = product.brand || '';
+            document.getElementById('productPrice').value = product.price;
+            document.getElementById('productStock').value = product.stockQuantity;
+            document.getElementById('productStatus').value = product.status;
+            document.getElementById('productDescription').value = product.description || '';
+            
+            // 이미지 미리보기 (이미지 URL이 있는 경우)
+            if (product.imageUrl) {
+                document.getElementById('imagePreview').style.display = 'block';
+                document.getElementById('previewImg').src = product.imageUrl;
+            } else {
+                document.getElementById('imagePreview').style.display = 'none';
+            }
+            
+            editingProductId = productId;
+            document.getElementById('productModal').style.display = 'flex';
+        } else {
+            showMessage('제품 정보를 불러오는데 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('제품 정보 로드 오류:', error);
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 제품 삭제
+async function deleteProduct(productId) {
+    if (!confirm('정말로 이 제품을 삭제하시겠습니까?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/products/${productId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('제품이 삭제되었습니다.', 'success');
+            loadProducts(currentPage);
+        } else {
+            showMessage(result.message || '제품 삭제에 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('제품 삭제 오류:', error);
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 제품 상세 보기
+async function viewProductDetail(productId) {
+    try {
+        const response = await fetch(`/api/products/${productId}`, {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            const product = result.data;
+            const detailContent = document.getElementById('productDetailContent');
+            
+            detailContent.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px;">
+                    <div>
+                        ${product.imageUrl ? 
+                            `<img src="${product.imageUrl}" style="width: 100%; border-radius: 8px; border: 1px solid #ddd;">` :
+                            `<div style="width: 100%; height: 300px; background: #f0f0f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #999;">이미지 없음</div>`
+                        }
+                    </div>
+                    <div>
+                        <h3 style="margin-top: 0;">${product.name}</h3>
+                        <div style="display: grid; grid-template-columns: 120px 1fr; gap: 15px; margin-top: 20px;">
+                            <strong>카테고리:</strong><span>${product.category}</span>
+                            <strong>브랜드:</strong><span>${product.brand || '-'}</span>
+                            <strong>가격:</strong><span style="color: #2196F3; font-size: 1.2em; font-weight: bold;">${product.price.toLocaleString('ko-KR')}원</span>
+                            <strong>재고수량:</strong><span>${product.stockQuantity}개</span>
+                            <strong>상태:</strong><span><span class="status-badge status-${product.status === '활성' ? 'active' : 'inactive'}">${product.status}</span></span>
+                            <strong>등록일:</strong><span>${new Date(product.registrationDate).toLocaleDateString('ko-KR')}</span>
+                        </div>
+                        ${product.description ? `
+                            <div style="margin-top: 30px;">
+                                <strong>제품 설명:</strong>
+                                <p style="margin-top: 10px; padding: 15px; background: #f5f5f5; border-radius: 4px; line-height: 1.6;">${product.description}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('productDetailModal').style.display = 'flex';
+        } else {
+            showMessage('제품 정보를 불러오는데 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('제품 상세 정보 로드 오류:', error);
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 제품 모달 닫기
+function closeProductModal() {
+    document.getElementById('productModal').style.display = 'none';
+    editingProductId = null;
+}
+
+// 제품 상세 모달 닫기
+function closeProductDetailModal() {
+    document.getElementById('productDetailModal').style.display = 'none';
+}
+
+// 이미지 미리보기
+function previewImage(input) {
+    const preview = document.getElementById('imagePreview');
+    const previewImg = document.getElementById('previewImg');
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            preview.style.display = 'block';
+        };
+        
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// 제품 폼 제출
+document.getElementById('productForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const productData = Object.fromEntries(formData);
+    
+    // 이미지 파일은 일단 제외 (향후 파일 업로드 기능 추가 가능)
+    delete productData.image;
+    
+    // 숫자 필드 변환
+    productData.price = parseInt(productData.price);
+    productData.stockQuantity = parseInt(productData.stockQuantity);
+    
+    const isEdit = editingProductId !== null;
+    
+    try {
+        const url = isEdit ? `/api/products/${editingProductId}` : '/api/products';
+        const method = isEdit ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify(productData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage(result.message, 'success');
+            closeProductModal();
+            loadProducts(currentPage);
+        } else {
+            showMessage(result.message || '오류가 발생했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('제품 저장 오류:', error);
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
+});
+
+// 메시지 표시 함수
+function showMessage(message, type) {
+    // 기존 메시지 제거
+    const existingMessage = document.querySelector('.message');
+    if (existingMessage) {
+        existingMessage.remove();
+    }
+    
+    // 새 메시지 생성
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}`;
+    messageDiv.textContent = message;
+    
+    // 페이지 상단에 삽입
+    const productsPage = document.querySelector('.products-page');
+    productsPage.insertBefore(messageDiv, productsPage.firstChild);
+    
+    // 3초 후 자동 제거
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.remove();
+        }
+    }, 3000);
+}
+
+// 로그아웃
+async function logout() {
+    try {
+        const response = await fetch('/api/logout', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            window.location.href = 'index.html';
+        } else {
+            window.location.href = 'index.html';
+        }
+    } catch (error) {
+        window.location.href = 'index.html';
+    }
+}
+

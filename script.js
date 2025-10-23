@@ -62,7 +62,7 @@ function showCustomers() {
 }
 
 function showProducts() {
-    alert('제품 관리 페이지 (개발 예정)');
+    window.location.href = 'products.html';
 }
 
 function showLedger() {

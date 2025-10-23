@@ -3,6 +3,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = 3000;
@@ -17,16 +18,52 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static('.'));
 
-// 메모리 저장소 (실제 프로덕션에서는 데이터베이스 사용)
-let users = [
+// 데이터 파일 경로
+const DATA_DIR = './data';
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const CUSTOMERS_FILE = path.join(DATA_DIR, 'customers.json');
+const REPAIRS_FILE = path.join(DATA_DIR, 'repairs.json');
+const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
+
+// 데이터 디렉토리 생성
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR);
+}
+
+// 데이터 로드 함수
+function loadData(filePath, defaultData) {
+  try {
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error(`데이터 로드 오류 (${filePath}):`, error);
+  }
+  return defaultData;
+}
+
+// 데이터 저장 함수
+function saveData(filePath, data) {
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    return true;
+  } catch (error) {
+    console.error(`데이터 저장 오류 (${filePath}):`, error);
+    return false;
+  }
+}
+
+// 데이터 로드
+let users = loadData(USERS_FILE, [
   { name: '관리자', username: 'admin', password: '1234', phone: '010-0000-0000', id: 1 }
-];
+]);
 
 // 세션 관리 (실제 프로덕션에서는 Redis 등 사용)
 let sessions = new Map();
 
 // 고객 데이터 저장소
-let customers = [
+let customers = loadData(CUSTOMERS_FILE, [
   { 
     id: 1, 
     name: '김철수', 
@@ -59,10 +96,10 @@ let customers = [
     status: '활성', 
     notes: '노트북 수리' 
   }
-];
+]);
 
 // 방문 기록 데이터 저장소
-let visitRecords = [
+let visitRecords = loadData(path.join(DATA_DIR, 'visitRecords.json'), [
   {
     id: 1,
     customerId: 1,
@@ -85,10 +122,10 @@ let visitRecords = [
     cost: 20000,
     notes: '정상 작동 확인'
   }
-];
+]);
 
 // 수리 이력 데이터 저장소
-let repairRecords = [
+let repairRecords = loadData(REPAIRS_FILE, [
   {
     id: 1,
     customerId: 1,
@@ -106,7 +143,7 @@ let repairRecords = [
     technician: '김기사',
     notes: '화면 교체 완료, 90일 보증'
   }
-];
+]);
 
 // 구매/매입 이력 데이터 저장소
 let purchaseRecords = [
@@ -135,6 +172,46 @@ let purchaseRecords = [
     notes: '추가 주문'
   }
 ];
+
+// 제품 데이터 저장소
+let products = loadData(PRODUCTS_FILE, [
+  {
+    id: 1,
+    name: '로지텍 MX Master 3S',
+    category: '마우스',
+    brand: '로지텍',
+    price: 129000,
+    stockQuantity: 15,
+    status: '활성',
+    description: '고급 무선 마우스, 8K DPI 센서, USB-C 충전',
+    imageUrl: '',
+    registrationDate: new Date('2024-01-10')
+  },
+  {
+    id: 2,
+    name: '키크론 K8 Pro',
+    category: '키보드',
+    brand: '키크론',
+    price: 159000,
+    stockQuantity: 10,
+    status: '활성',
+    description: '텐키리스 기계식 키보드, 무선/유선 겸용, RGB 백라이트',
+    imageUrl: '',
+    registrationDate: new Date('2024-02-15')
+  },
+  {
+    id: 3,
+    name: 'LG 울트라기어 27GL850',
+    category: '모니터',
+    brand: 'LG',
+    price: 450000,
+    stockQuantity: 5,
+    status: '활성',
+    description: '27인치 QHD 나노IPS 게이밍 모니터, 144Hz, 1ms',
+    imageUrl: '',
+    registrationDate: new Date('2024-03-20')
+  }
+]);
 
 // 세션 생성 함수
 function createSession(user) {
@@ -339,7 +416,13 @@ app.post('/api/customers', requireAuth, (req, res) => {
   };
   
   customers.push(newCustomer);
-  res.json({ success: true, message: '고객이 등록되었습니다.', data: newCustomer });
+  
+  // 데이터 저장
+  if (saveData(CUSTOMERS_FILE, customers)) {
+    res.json({ success: true, message: '고객이 등록되었습니다.', data: newCustomer });
+  } else {
+    res.json({ success: false, message: '데이터 저장에 실패했습니다.' });
+  }
 });
 
 // 고객 수정
@@ -375,7 +458,12 @@ app.put('/api/customers/:id', requireAuth, (req, res) => {
     notes: notes || customers[customerIndex].notes
   };
   
-  res.json({ success: true, message: '고객 정보가 수정되었습니다.', data: customers[customerIndex] });
+  // 데이터 저장
+  if (saveData(CUSTOMERS_FILE, customers)) {
+    res.json({ success: true, message: '고객 정보가 수정되었습니다.', data: customers[customerIndex] });
+  } else {
+    res.json({ success: false, message: '데이터 저장에 실패했습니다.' });
+  }
 });
 
 // 고객 삭제
@@ -388,7 +476,13 @@ app.delete('/api/customers/:id', requireAuth, (req, res) => {
   }
   
   customers.splice(customerIndex, 1);
-  res.json({ success: true, message: '고객이 삭제되었습니다.' });
+  
+  // 데이터 저장
+  if (saveData(CUSTOMERS_FILE, customers)) {
+    res.json({ success: true, message: '고객이 삭제되었습니다.' });
+  } else {
+    res.json({ success: false, message: '데이터 저장에 실패했습니다.' });
+  }
 });
 
 // 방문 기록 관리 API
@@ -543,7 +637,13 @@ app.post('/api/repairs', requireAuth, (req, res) => {
   };
   
   repairRecords.push(newRepair);
-  res.json({ success: true, message: '수리 이력이 등록되었습니다.', data: newRepair });
+  
+  // 데이터 저장
+  if (saveData(REPAIRS_FILE, repairRecords)) {
+    res.json({ success: true, message: '수리 이력이 등록되었습니다.', data: newRepair });
+  } else {
+    res.json({ success: false, message: '데이터 저장에 실패했습니다.' });
+  }
 });
 
 // 수리 이력 상세 조회
@@ -695,6 +795,147 @@ app.post('/api/purchases', requireAuth, (req, res) => {
   
   purchaseRecords.push(newPurchase);
   res.json({ success: true, message: '구매 이력이 등록되었습니다.', data: newPurchase });
+});
+
+// 제품 관리 API
+// 제품 목록 조회
+app.get('/api/products', requireAuth, (req, res) => {
+  const { page = 1, limit = 10, search = '', category = '', status = '' } = req.query;
+  
+  let filteredProducts = products;
+  
+  // 검색 필터링
+  if (search) {
+    filteredProducts = filteredProducts.filter(product => 
+      product.name.toLowerCase().includes(search.toLowerCase()) || 
+      (product.brand && product.brand.toLowerCase().includes(search.toLowerCase()))
+    );
+  }
+  
+  // 카테고리 필터링
+  if (category) {
+    filteredProducts = filteredProducts.filter(product => 
+      product.category === category
+    );
+  }
+  
+  // 상태 필터링
+  if (status) {
+    filteredProducts = filteredProducts.filter(product => 
+      product.status === status
+    );
+  }
+  
+  // 페이지네이션
+  const startIndex = (page - 1) * limit;
+  const endIndex = startIndex + parseInt(limit);
+  const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+  
+  res.json({
+    success: true,
+    data: paginatedProducts,
+    pagination: {
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(filteredProducts.length / limit),
+      totalItems: filteredProducts.length,
+      itemsPerPage: parseInt(limit)
+    }
+  });
+});
+
+// 제품 상세 조회
+app.get('/api/products/:id', requireAuth, (req, res) => {
+  const productId = parseInt(req.params.id);
+  const product = products.find(p => p.id === productId);
+  
+  if (product) {
+    res.json({ success: true, data: product });
+  } else {
+    res.json({ success: false, message: '제품을 찾을 수 없습니다.' });
+  }
+});
+
+// 제품 등록
+app.post('/api/products', requireAuth, (req, res) => {
+  const { name, category, brand, price, stockQuantity, status, description } = req.body;
+  
+  // 필수 필드 검증
+  if (!name || !category || price === undefined || stockQuantity === undefined) {
+    return res.json({ success: false, message: '제품명, 카테고리, 가격, 재고수량은 필수입니다.' });
+  }
+  
+  // 새 제품 생성
+  const newProduct = {
+    id: Date.now(),
+    name,
+    category,
+    brand: brand || '',
+    price: parseInt(price),
+    stockQuantity: parseInt(stockQuantity),
+    status: status || '활성',
+    description: description || '',
+    imageUrl: '',
+    registrationDate: new Date()
+  };
+  
+  products.push(newProduct);
+  
+  // 데이터 저장
+  if (saveData(PRODUCTS_FILE, products)) {
+    res.json({ success: true, message: '제품이 등록되었습니다.', data: newProduct });
+  } else {
+    res.json({ success: false, message: '데이터 저장에 실패했습니다.' });
+  }
+});
+
+// 제품 수정
+app.put('/api/products/:id', requireAuth, (req, res) => {
+  const productId = parseInt(req.params.id);
+  const productIndex = products.findIndex(p => p.id === productId);
+  
+  if (productIndex === -1) {
+    return res.json({ success: false, message: '제품을 찾을 수 없습니다.' });
+  }
+  
+  const { name, category, brand, price, stockQuantity, status, description } = req.body;
+  
+  // 제품 정보 업데이트
+  products[productIndex] = {
+    ...products[productIndex],
+    name: name || products[productIndex].name,
+    category: category || products[productIndex].category,
+    brand: brand !== undefined ? brand : products[productIndex].brand,
+    price: price !== undefined ? parseInt(price) : products[productIndex].price,
+    stockQuantity: stockQuantity !== undefined ? parseInt(stockQuantity) : products[productIndex].stockQuantity,
+    status: status || products[productIndex].status,
+    description: description !== undefined ? description : products[productIndex].description
+  };
+  
+  // 데이터 저장
+  if (saveData(PRODUCTS_FILE, products)) {
+    res.json({ success: true, message: '제품 정보가 수정되었습니다.', data: products[productIndex] });
+  } else {
+    res.json({ success: false, message: '데이터 저장에 실패했습니다.' });
+  }
+});
+
+// 제품 삭제
+app.delete('/api/products/:id', requireAuth, (req, res) => {
+  const productId = parseInt(req.params.id);
+  const productIndex = products.findIndex(p => p.id === productId);
+  
+  if (productIndex === -1) {
+    return res.json({ success: false, message: '제품을 찾을 수 없습니다.' });
+  }
+  
+  products.splice(productIndex, 1);
+  
+  // 데이터 저장
+  if (saveData(PRODUCTS_FILE, products)) {
+    res.json({ success: true, message: '제품이 삭제되었습니다.' });
+  } else {
+    res.json({ success: false, message: '데이터 저장에 실패했습니다.' });
+  }
 });
 
 // 모든 라우트에 대해 index.html 반환 (SPA 지원)
