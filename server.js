@@ -7,7 +7,10 @@ const app = express();
 const PORT = 3000;
 
 // 미들웨어
-app.use(cors());
+app.use(cors({
+  origin: ['http://kkam.shop', 'https://kkam.shop', 'http://localhost:3000', 'http://localhost:3001'],
+  credentials: true
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('.'));
@@ -48,7 +51,8 @@ app.post('/api/register', (req, res) => {
 });
 
 // 서버 시작
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`서버가 포트 ${PORT}에서 실행 중입니다.`);
   console.log(`http://localhost:${PORT} 에서 확인하세요.`);
+  console.log(`도메인: http://kkam.shop:${PORT}`);
 });
