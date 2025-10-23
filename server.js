@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 const path = require('path');
 
 const app = express();
-const PORT = 3000;
+const PORT = 80;
 
 // 미들웨어
 app.use(cors({
@@ -48,6 +48,16 @@ app.post('/api/register', (req, res) => {
   users.push(newUser);
   
   res.json({ success: true, message: '회원가입이 완료되었습니다.' });
+});
+
+// 기본 라우트
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/index.html');
+});
+
+// 모든 라우트에 대해 index.html 반환 (SPA 지원)
+app.get('*', (req, res) => {
+  res.sendFile(__dirname + '/index.html');
 });
 
 // 서버 시작

@@ -94,6 +94,68 @@ body {
     opacity: 0.9;
 }
 
+/* 대시보드 */
+.dashboard {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    margin: 20px auto;
+    max-width: 1200px;
+}
+
+.dashboard h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 40px;
+    font-size: 36px;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.dashboard-card {
+    background: #f8f9fa;
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    border-color: #1a73e8;
+}
+
+.dashboard-card h3 {
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 20px;
+}
+
+.dashboard-card p {
+    color: #666;
+    font-size: 14px;
+}
+
+/* 사용자 정보 */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-info span {
+    color: #333;
+    font-weight: 600;
+}
+
 /* 로그인/회원가입 폼 */
 .login-form,
 .register-form {

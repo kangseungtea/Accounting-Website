@@ -32,6 +32,58 @@ function showLoginForm() {
     }
 }
 
+// 홈 화면 표시
+function showHome() {
+    hideAllScreens();
+    document.getElementById('homeScreen').style.display = 'block';
+    document.getElementById('navMenu').style.display = 'none';
+    document.getElementById('userInfo').style.display = 'none';
+}
+
+// 대시보드 표시
+function showDashboard() {
+    hideAllScreens();
+    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('navMenu').style.display = 'flex';
+    document.getElementById('userInfo').style.display = 'flex';
+}
+
+// 모든 화면 숨기기
+function hideAllScreens() {
+    document.getElementById('homeScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'none';
+    loginFormDiv.style.display = 'none';
+    registerFormDiv.style.display = 'none';
+}
+
+// 메뉴 함수들
+function showCustomers() {
+    alert('고객 관리 페이지 (개발 예정)');
+}
+
+function showProducts() {
+    alert('제품 관리 페이지 (개발 예정)');
+}
+
+function showLedger() {
+    alert('장부 관리 페이지 (개발 예정)');
+}
+
+function showAccounting() {
+    alert('회계 관리 페이지 (개발 예정)');
+}
+
+function showSettings() {
+    alert('설정 페이지 (개발 예정)');
+}
+
+// 로그아웃
+function logout() {
+    localStorage.removeItem('userInfo');
+    showHome();
+    alert('로그아웃되었습니다.');
+}
+
 // 메시지 표시 함수
 function showMessage(message, type) {
     // 기존 메시지 제거
@@ -97,9 +149,12 @@ loginForm.addEventListener('submit', async (e) => {
         
         if (data.success) {
             showMessage(data.message, 'success');
-            // 로그인 성공 시 홈페이지로 이동 (실제로는 다른 페이지로)
+            // 사용자 정보 저장
+            localStorage.setItem('userInfo', JSON.stringify(data.user));
+            // 로그인 성공 시 대시보드로 이동
             setTimeout(() => {
-                window.location.href = '/home';
+                showDashboard();
+                document.getElementById('userName').textContent = data.user.name;
             }, 1500);
         } else {
             showMessage(data.message, 'error');
@@ -173,4 +228,16 @@ document.querySelectorAll('input').forEach(input => {
             this.parentElement.classList.remove('focused');
         }
     });
+});
+
+// 페이지 로드 시 사용자 상태 확인
+window.addEventListener('load', () => {
+    const userInfo = localStorage.getItem('userInfo');
+    if (userInfo) {
+        const user = JSON.parse(userInfo);
+        showDashboard();
+        document.getElementById('userName').textContent = user.name;
+    } else {
+        showHome();
+    }
 });

@@ -10,8 +10,20 @@
     <!-- 네비게이션 바 -->
     <nav class="navbar">
         <div class="nav-container">
-            <a href="#" class="nav-brand" onclick="showLoginForm()">깜냥컴퓨터</a>
-            <ul class="nav-menu">
+            <a href="#" class="nav-brand" onclick="showHome()">깜냥컴퓨터</a>
+            <ul class="nav-menu" id="navMenu" style="display: none;">
+                <li><a href="#" onclick="showHome()">홈</a></li>
+                <li><a href="#" onclick="showCustomers()">고객</a></li>
+                <li><a href="#" onclick="showProducts()">제품</a></li>
+                <li><a href="#" onclick="showLedger()">장부</a></li>
+                <li><a href="#" onclick="showAccounting()">회계</a></li>
+                <li><a href="#" onclick="showSettings()">설정</a></li>
+            </ul>
+            <div class="user-info" id="userInfo" style="display: none;">
+                <span id="userName">사용자</span>
+                <button onclick="logout()" class="btn btn-outline">로그아웃</button>
+            </div>
+        </div>
     </nav>
 
     <div class="container">
@@ -50,10 +62,33 @@
         </div>
         
         <!-- 홈 화면 -->
-        <div class="home-screen">
+        <div class="home-screen" id="homeScreen">
             <h1>깜냥컴퓨터에 오신 것을 환영합니다</h1>
             <p>로그인하여 서비스를 이용해보세요</p>
             <button onclick="showLoginForm()" class="btn btn-primary">로그인하기</button>
+        </div>
+
+        <!-- 대시보드 화면 -->
+        <div class="dashboard" id="dashboard" style="display: none;">
+            <h1>대시보드</h1>
+            <div class="dashboard-grid">
+                <div class="dashboard-card" onclick="showCustomers()">
+                    <h3>고객 관리</h3>
+                    <p>고객 정보를 관리합니다</p>
+                </div>
+                <div class="dashboard-card" onclick="showProducts()">
+                    <h3>제품 관리</h3>
+                    <p>제품 재고를 관리합니다</p>
+                </div>
+                <div class="dashboard-card" onclick="showLedger()">
+                    <h3>장부 관리</h3>
+                    <p>수리 내역을 관리합니다</p>
+                </div>
+                <div class="dashboard-card" onclick="showAccounting()">
+                    <h3>회계 관리</h3>
+                    <p>수입/지출을 관리합니다</p>
+                </div>
+            </div>
         </div>
     </div>
     <script src="script.js"></script>
