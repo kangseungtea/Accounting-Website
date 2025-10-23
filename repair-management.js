@@ -116,7 +116,7 @@ function displayRepairs(repairs) {
     tbody.innerHTML = '';
     
     if (repairs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #666;">수리 이력이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #666;">수리 이력이 없습니다.</td></tr>';
         return;
     }
     
@@ -127,7 +127,6 @@ function displayRepairs(repairs) {
         
         row.innerHTML = `
             <td>${new Date(repair.repairDate).toLocaleDateString('ko-KR')}</td>
-            <td>${repair.deviceType}</td>
             <td>${repair.deviceModel || '-'}</td>
             <td>${repair.problem}</td>
             <td>${repair.solution || '-'}</td>
@@ -285,7 +284,7 @@ function initializeRepairForm() {
         try {
             const url = isEdit ? `/api/repairs/${repairId}` : '/api/repairs';
             const method = isEdit ? 'PUT' : 'POST';
-            
+
             const response = await fetch(url, {
                 method: method,
                 headers: {
@@ -294,10 +293,22 @@ function initializeRepairForm() {
                 credentials: 'include',
                 body: JSON.stringify(repairData)
             });
-            
+
+            console.log('응답 상태:', response.status, response.statusText);
+            console.log('응답 헤더:', response.headers.get('content-type'));
+
+            // 응답이 JSON인지 확인
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('JSON이 아닌 응답:', text);
+                showMessage('서버 오류가 발생했습니다. 페이지를 새로고침해주세요.', 'error');
+                return;
+            }
+
             const result = await response.json();
             console.log('서버 응답:', result); // 디버깅용
-            
+
             if (result.success) {
                 showMessage(result.message, 'success');
                 closeRepairModal();
@@ -387,9 +398,9 @@ function showRepairDetailModal(repair) {
                         <label>수리일</label>
                         <span>${new Date(repair.repairDate).toLocaleDateString('ko-KR')}</span>
                     </div>
-                    <div class="detail-item">
-                        <label>기기종류</label>
-                        <span>${repair.deviceType}</span>
+                       <div class="detail-item">
+                        <label>담당 기사</label>
+                        <span>${repair.technician || '-'}</span>
                     </div>
                     <div class="detail-item">
                         <label>모델명</label>
@@ -423,10 +434,6 @@ function showRepairDetailModal(repair) {
                         <label>보증기간</label>
                         <span>${repair.warranty}일</span>
                     </div>
-                    <div class="detail-item">
-                        <label>담당 기사</label>
-                        <span>${repair.technician || '-'}</span>
-                    </div>
                     <div class="detail-item full-width">
                         <label>사용 부품</label>
                         <span>${repair.parts ? repair.parts.join(', ') : '-'}</span>
@@ -450,23 +457,14 @@ function addRepairSearchAndFilter() {
     const searchHTML = `
         <div class="repair-search-filter" style="margin-bottom: 20px;">
             <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-                <input type="text" id="repairSearch" placeholder="기기종류, 모델명, 문제로 검색..." 
+                <input type="text" id="repairSearch" placeholder="모델명, 문제로 검색..." 
                        style="flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
                 <select id="repairStatusFilter" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
                     <option value="">전체 상태</option>
                     <option value="접수">접수</option>
-                    <option value="진단">진단</option>
-                    <option value="수리중">수리중</option>
+                    <option value="위탁접수">위탁접수</option>
                     <option value="완료">완료</option>
                     <option value="보증중">보증중</option>
-                </select>
-                <select id="repairDeviceFilter" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px;">
-                    <option value="">전체 기기</option>
-                    <option value="노트북">노트북</option>
-                    <option value="데스크탑">데스크탑</option>
-                    <option value="모니터">모니터</option>
-                    <option value="프린터">프린터</option>
-                    <option value="기타">기타</option>
                 </select>
                 <button onclick="clearRepairFilters()" class="btn btn-outline" style="padding: 8px 16px;">초기화</button>
             </div>
@@ -478,7 +476,6 @@ function addRepairSearchAndFilter() {
     // 이벤트 리스너 등록
     document.getElementById('repairSearch').addEventListener('input', filterRepairs);
     document.getElementById('repairStatusFilter').addEventListener('change', filterRepairs);
-    document.getElementById('repairDeviceFilter').addEventListener('change', filterRepairs);
 }
 
 // 수리 이력 필터링
@@ -488,18 +485,15 @@ let filteredRepairs = [];
 async function filterRepairs() {
     const searchTerm = document.getElementById('repairSearch').value.toLowerCase();
     const statusFilter = document.getElementById('repairStatusFilter').value;
-    const deviceFilter = document.getElementById('repairDeviceFilter').value;
     
     filteredRepairs = allRepairs.filter(repair => {
         const matchesSearch = !searchTerm || 
-            repair.deviceType.toLowerCase().includes(searchTerm) ||
             (repair.deviceModel && repair.deviceModel.toLowerCase().includes(searchTerm)) ||
             repair.problem.toLowerCase().includes(searchTerm);
         
         const matchesStatus = !statusFilter || repair.status === statusFilter;
-        const matchesDevice = !deviceFilter || repair.deviceType === deviceFilter;
         
-        return matchesSearch && matchesStatus && matchesDevice;
+        return matchesSearch && matchesStatus;
     });
     
     displayRepairs(filteredRepairs);
@@ -509,7 +503,6 @@ async function filterRepairs() {
 function clearRepairFilters() {
     document.getElementById('repairSearch').value = '';
     document.getElementById('repairStatusFilter').value = '';
-    document.getElementById('repairDeviceFilter').value = '';
     filteredRepairs = [...allRepairs];
     displayRepairs(filteredRepairs);
 }

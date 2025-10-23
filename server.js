@@ -478,7 +478,6 @@ app.get('/api/repairs', requireAuth, (req, res) => {
   
   if (search) {
     filteredRepairs = filteredRepairs.filter(r => 
-      r.deviceType.toLowerCase().includes(search.toLowerCase()) ||
       r.deviceModel.toLowerCase().includes(search.toLowerCase()) ||
       r.problem.toLowerCase().includes(search.toLowerCase()) ||
       r.solution.toLowerCase().includes(search.toLowerCase())

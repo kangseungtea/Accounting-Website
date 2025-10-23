@@ -44,7 +44,7 @@ function displayRepairs(repairs) {
     tbody.innerHTML = '';
 
     if (repairs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #666;">수리 이력이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #666;">수리 이력이 없습니다.</td></tr>';
         return;
     }
 
@@ -55,7 +55,6 @@ function displayRepairs(repairs) {
 
         row.innerHTML = `
             <td>${new Date(repair.repairDate).toLocaleDateString('ko-KR')}</td>
-            <td>${repair.deviceType}</td>
             <td>${repair.deviceModel || '-'}</td>
             <td>${repair.problem}</td>
             <td>${repair.solution || '-'}</td>
