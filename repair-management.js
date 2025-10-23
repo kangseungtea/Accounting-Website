@@ -387,29 +387,40 @@ function showRepairDetailModal(repair) {
     modal.className = 'modal';
     modal.style.display = 'flex';
     modal.innerHTML = `
-        <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-content" style="max-width: 1100px;">
             <div class="modal-header">
                 <h2>수리 이력 상세 정보</h2>
                 <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
             </div>
             <div style="padding: 30px;">
                 <div class="repair-detail-grid">
-                    <div class="detail-item">
-                        <label>수리일</label>
-                        <span>${new Date(repair.repairDate).toLocaleDateString('ko-KR')}</span>
+                    <!-- 수리일, 담당기사, 상태, 보증기간을 한 줄로 배치 -->
+                    <div class="detail-item-row" style="display: flex; gap: 170px; align-items: center; padding: 20px; background: #f8f9fa; border-radius: 8px; flex-wrap: nowrap;">
+                        <div class="detail-item" style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-weight: 600; color: #666; font-size: 20px;white-space: nowrap; display: inline-block;">수리일:</label>
+                            <span style="color: #333; font-size: 20px;white-space: nowrap;display: inline-block;">${new Date(repair.repairDate).toLocaleDateString('ko-KR')}</span>
+                        </div>
+                        <div class="detail-item" style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-weight: 600; color: #666; font-size: 20px;white-space: nowrap; display: inline-block;">담당 기사:</label>
+                            <span style="color: #333; font-size: 20px;white-space: nowrap;display: inline-block;">${repair.technician || '-'}</span>
+                        </div>
+                        <div class="detail-item" style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-weight: 600; color: #666; font-size: 20px;white-space: nowrap; display: inline-block;">상태:</label>
+                            <span style="color: #333; font-size: 20px;white-space: nowrap;display: inline-block;">${getStatusBadge(repair.status)}</span>
+                        </div>
+                        <div class="detail-item" style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-weight: 600; color: #666; font-size: 20px;white-space: nowrap; display: inline-block;">보증기간:</label>
+                            <span style="color: #333; font-size: 20px;white-space: nowrap;display: inline-block;">${repair.warranty || '-'}</span>
+                        </div>
                     </div>
-                       <div class="detail-item">
-                        <label>담당 기사</label>
-                        <span>${repair.technician || '-'}</span>
+                    
+                    <!-- 모델명을 한 줄 배치 영역 바로 아래로 이동 -->
+                    <div class="detail-item full-width"> 
+                        <label style="margin-top: 15px; padding: 15px; background: #f0f8ff; border-radius: 8px; border-left: 4px solid #1976d2;">
+                        <label style="font-weight: 700; color:#1976d2; font-size: 14px; margin-bottom: 5px; display: block;">모델명</label>
+                        <span style="color: #333; font-size: 16px; font-weight: 500; white-space: pre-line;">${repair.deviceModel || '-'}</span>
                     </div>
-                    <div class="detail-item">
-                        <label>모델명</label>
-                        <span>${repair.deviceModel || '-'}</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>상태</label>
-                        <span>${getStatusBadge(repair.status)}</span>
-                    </div>
+                    
                     <div class="detail-item full-width">
                         <label>문제</label>
                         <span>${repair.problem}</span>
@@ -429,10 +440,6 @@ function showRepairDetailModal(repair) {
                     <div class="detail-item">
                         <label>총비용</label>
                         <span>${repair.totalCost.toLocaleString('ko-KR')}원</span>
-                    </div>
-                    <div class="detail-item">
-                        <label>보증기간</label>
-                        <span>${repair.warranty}일</span>
                     </div>
                     <div class="detail-item full-width">
                         <label>사용 부품</label>

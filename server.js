@@ -9,7 +9,7 @@ const PORT = 3000;
 
 // 미들웨어
 app.use(cors({
-  origin: ['http://kkam.shop', 'https://kkam.shop', 'http://localhost:3000', 'http://localhost:3001'],
+  origin: ['http://kkam.shop', 'https://kkam.shop', 'http://kkam.shop:3000', 'https://kkam.shop:3000', 'http://localhost:3000', 'http://localhost:3001'],
   credentials: true
 }));
 app.use(bodyParser.json());
@@ -512,9 +512,13 @@ app.get('/api/repairs', requireAuth, (req, res) => {
 
 // 수리 이력 등록
 app.post('/api/repairs', requireAuth, (req, res) => {
+  console.log('수리 이력 등록 요청:', req.body);
+  console.log('요청 헤더:', req.headers);
+  
   const { customerId, repairDate, deviceType, deviceModel, problem, solution, parts, laborCost, partsCost, warranty, technician, status, notes } = req.body;
   
   if (!customerId || !repairDate || !problem) {
+    console.log('필수 필드 누락:', { customerId, repairDate, problem });
     return res.json({ success: false, message: '고객ID, 수리일, 문제는 필수입니다.' });
   }
   
