@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 네비게이션 바 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#" class="nav-brand" onclick="showLoginForm()">깜냥컴퓨터</a>
+            <ul class="nav-menu">
+    </nav>
+
+    <div class="container">
+        <div class="login-form" style="display: none;">
+            <h2>로그인</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <input type="text" id="username" placeholder="아이디" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="password" placeholder="비밀번호" required>
+                </div>
+                <button type="submit">로그인</button>
+            </form>
+            <p>계정이 없으신가요? <a href="#" id="showRegister">회원가입</a></p>
+        </div>
+
+        <div class="register-form" style="display: none;">
+            <h2>회원가입</h2>
+            <form id="registerForm">
+                <div class="form-group">
+                    <input type="text" id="regName" placeholder="이름" required>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="regUsername" placeholder="아이디" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="regPassword" placeholder="비밀번호" required>
+                </div>
+                <div class="form-group">
+                    <input type="tel" id="regPhone" placeholder="전화번호" required>
+                </div>
+                <button type="submit">가입하기</button>
+            </form>
+            <p>이미 계정이 있으신가요? <a href="#" id="showLogin">로그인</a></p>
+        </div>
+        
+        <!-- 홈 화면 -->
+        <div class="home-screen">
+            <h1>깜냥컴퓨터에 오신 것을 환영합니다</h1>
+            <p>로그인하여 서비스를 이용해보세요</p>
+            <button onclick="showLoginForm()" class="btn btn-primary">로그인하기</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
