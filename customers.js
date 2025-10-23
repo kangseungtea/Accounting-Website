@@ -79,6 +79,7 @@ function displayCustomers(customers) {
             <td><span class="status-badge status-${customer.status === '활성' ? 'active' : 'inactive'}">${customer.status}</span></td>
             <td>
                 <div class="action-buttons">
+                    <button class="action-btn view-btn" onclick="viewCustomer(${customer.id})">상세</button>
                     <button class="action-btn edit-btn" onclick="editCustomer(${customer.id})">수정</button>
                     <button class="action-btn delete-btn" onclick="deleteCustomer(${customer.id})">삭제</button>
                 </div>
@@ -200,6 +201,23 @@ async function deleteCustomer(customerId) {
         }
     } catch (error) {
         showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 고객 상세 보기
+function viewCustomer(customerId) {
+    // 새 창으로 고객 상세 페이지 열기
+    const newWindow = window.open(
+        `customer-detail.html?id=${customerId}`, 
+        `customer_${customerId}`, 
+        'width=1200,height=800,scrollbars=yes,resizable=yes,menubar=no,toolbar=no,location=no,status=no'
+    );
+    
+    // 새 창이 차단되었을 경우 대비
+    if (!newWindow) {
+        alert('팝업이 차단되었습니다. 팝업 차단을 해제하고 다시 시도해주세요.');
+        // 팝업이 차단된 경우 기존 방식으로 이동
+        window.location.href = `customer-detail.html?id=${customerId}`;
     }
 }
 

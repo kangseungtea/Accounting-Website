@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고객 상세 정보 - 깜냥컴퓨터</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 네비게이션 바 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-brand">깜냥컴퓨터</a>
+            <ul class="nav-menu">
+                <li><a href="index.html">홈</a></li>
+                <li><a href="customers.html" class="active">고객</a></li>
+                <li><a href="#" onclick="alert('제품 관리 페이지 (개발 예정)')">제품</a></li>
+                <li><a href="#" onclick="alert('장부 관리 페이지 (개발 예정)')">장부</a></li>
+                <li><a href="#" onclick="alert('회계 관리 페이지 (개발 예정)')">회계</a></li>
+                <li><a href="#" onclick="alert('설정 페이지 (개발 예정)')">설정</a></li>
+            </ul>
+            <div class="user-info">
+                <span id="userName">사용자</span>
+                <button onclick="logout()" class="btn btn-outline">로그아웃</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 고객 상세 정보 화면 -->
+    <div class="customer-detail-page">
+        <div class="page-header">
+            <div class="header-left">
+                <button onclick="goBack()" class="btn btn-outline">← 뒤로가기</button>
+                <h1 id="customerName">고객 상세 정보</h1>
+            </div>
+            <div class="header-actions">
+                <button onclick="editCustomer()" class="btn btn-primary">고객 정보 수정</button>
+                <button onclick="addVisit()" class="btn btn-success">방문 기록 추가</button>
+                <button onclick="addRepair()" class="btn btn-warning">수리 이력 추가</button>
+                <button onclick="addPurchase()" class="btn btn-info">구매 이력 추가</button>
+            </div>
+        </div>
+
+        <!-- 고객 기본 정보 -->
+        <div class="info-section">
+            <h2>기본 정보</h2>
+            <div class="info-grid" id="customerBasicInfo">
+                <!-- 고객 기본 정보가 여기에 동적으로 추가됩니다 -->
+            </div>
+        </div>
+
+        <!-- 탭 메뉴 -->
+        <div class="tab-menu">
+            <button class="tab-btn active" onclick="showTab('visits')">방문 기록</button>
+            <button class="tab-btn" onclick="showTab('repairs')">수리 이력</button>
+            <button class="tab-btn" onclick="showTab('purchases')">구매 이력</button>
+        </div>
+
+        <!-- 방문 기록 탭 -->
+        <div class="tab-content active" id="visitsTab">
+            <div class="section-header">
+                <h3>방문 기록</h3>
+                <button onclick="addVisit()" class="btn btn-primary">+ 방문 기록 추가</button>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>방문일</th>
+                            <th>목적</th>
+                            <th>설명</th>
+                            <th>기사</th>
+                            <th>비용</th>
+                            <th>상태</th>
+                            <th>액션</th>
+                        </tr>
+                    </thead>
+                    <tbody id="visitsTableBody">
+                        <!-- 방문 기록이 여기에 동적으로 추가됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 수리 이력 탭 -->
+        <div class="tab-content" id="repairsTab">
+            <div class="section-header">
+                <h3>수리 이력</h3>
+                <button onclick="addRepair()" class="btn btn-primary">+ 수리 이력 추가</button>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>수리일</th>
+                            <th>기기종류</th>
+                            <th>모델</th>
+                            <th>문제</th>
+                            <th>해결방법</th>
+                            <th>총비용</th>
+                            <th>상태</th>
+                            <th>보증</th>
+                            <th>액션</th>
+                        </tr>
+                    </thead>
+                    <tbody id="repairsTableBody">
+                        <!-- 수리 이력이 여기에 동적으로 추가됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 구매 이력 탭 -->
+        <div class="tab-content" id="purchasesTab">
+            <div class="section-header">
+                <h3>구매 이력</h3>
+                <button onclick="addPurchase()" class="btn btn-primary">+ 구매 이력 추가</button>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>구매일</th>
+                            <th>구분</th>
+                            <th>상품목록</th>
+                            <th>총금액</th>
+                            <th>결제방법</th>
+                            <th>상태</th>
+                            <th>액션</th>
+                        </tr>
+                    </thead>
+                    <tbody id="purchasesTableBody">
+                        <!-- 구매 이력이 여기에 동적으로 추가됩니다 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 방문 기록 모달 -->
+    <div class="modal" id="visitModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="visitModalTitle">방문 기록 추가</h2>
+                <button class="close-btn" onclick="closeVisitModal()">&times;</button>
+            </div>
+            <form id="visitForm">
+                <div class="form-group">
+                    <label for="visitDate">방문일 *</label>
+                    <input type="date" id="visitDate" name="visitDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="visitPurpose">목적 *</label>
+                    <input type="text" id="visitPurpose" name="purpose" required>
+                </div>
+                <div class="form-group">
+                    <label for="visitDescription">설명</label>
+                    <textarea id="visitDescription" name="description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="visitTechnician">담당 기사</label>
+                    <input type="text" id="visitTechnician" name="technician">
+                </div>
+                <div class="form-group">
+                    <label for="visitCost">비용</label>
+                    <input type="number" id="visitCost" name="cost" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="visitStatus">상태</label>
+                    <select id="visitStatus" name="status">
+                        <option value="예약">예약</option>
+                        <option value="진행중">진행중</option>
+                        <option value="완료">완료</option>
+                        <option value="취소">취소</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="visitNotes">메모</label>
+                    <textarea id="visitNotes" name="notes" rows="3"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeVisitModal()">취소</button>
+                    <button type="submit" class="btn btn-primary">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 수리 이력 모달 -->
+    <div class="modal" id="repairModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="repairModalTitle">수리 이력 추가</h2>
+                <button class="close-btn" onclick="closeRepairModal()">&times;</button>
+            </div>
+            <form id="repairForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="repairDate">수리일 *</label>
+                        <input type="date" id="repairDate" name="repairDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="repairTechnician">담당 기사</label>
+                        <input type="text" id="repairTechnician" name="technician">
+                    </div>
+                    <div class="form-group">
+                        <label for="repairStatus">상태</label>
+                        <select id="repairStatus" name="status">
+                            <option value="접수">접수</option>
+                            <option value="위탁접수">위탁접수</option>
+                            <option value="완료" selected>완료</option>
+                            <option value="보증중">보증중</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="warranty">보증기간</label>
+                        <input type="text" id="warranty" name="warranty" placeholder="2025-01-01~2026-01-03">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="deviceModel">모델명</label>
+                    <textarea id="deviceModel" name="deviceModel" rows="3" placeholder="모델명을 입력하세요 (예: [CPU]AMD 라이젠7-6세대 9800X3D...)"></textarea>
+                    <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                        💡 긴 모델명을 입력할 수 있습니다. Ctrl+Enter로 다음 필드로 이동합니다.
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label for="problem">문제 *</label>
+                    <textarea id="problem" name="problem" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="solution">해결방법</label>
+                    <textarea id="solution" name="solution" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="parts">사용 부품</label>
+                    <input type="text" id="parts" name="parts" placeholder="부품명을 쉼표로 구분">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="laborCost">인건비</label>
+                        <input type="number" id="laborCost" name="laborCost" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="partsCost">부품비</label>
+                        <input type="number" id="partsCost" name="partsCost" min="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="repairNotes">메모</label>
+                        <textarea id="repairNotes" name="notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeRepairModal()">취소</button>
+                    <button type="submit" class="btn btn-primary">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 구매 이력 모달 -->
+    <div class="modal" id="purchaseModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="purchaseModalTitle">구매 이력 추가</h2>
+                <button class="close-btn" onclick="closePurchaseModal()">&times;</button>
+            </div>
+            <form id="purchaseForm">
+                <div class="form-group">
+                    <label for="purchaseDate">구매일 *</label>
+                    <input type="date" id="purchaseDate" name="purchaseDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="purchaseType">구분 *</label>
+                    <select id="purchaseType" name="type" required>
+                        <option value="">선택하세요</option>
+                        <option value="판매">판매</option>
+                        <option value="매입">매입</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>상품목록 *</label>
+                    <div id="itemsList">
+                        <div class="item-row">
+                            <input type="text" name="itemName" placeholder="상품명" required>
+                            <input type="number" name="itemQuantity" placeholder="수량" min="1" value="1" required>
+                            <input type="number" name="itemUnitPrice" placeholder="단가" min="0" required>
+                            <button type="button" onclick="removeItem(this)" class="btn btn-danger">삭제</button>
+                        </div>
+                    </div>
+                    <button type="button" onclick="addItem()" class="btn btn-outline">+ 상품 추가</button>
+                </div>
+                <div class="form-group">
+                    <label for="paymentMethod">결제방법</label>
+                    <select id="paymentMethod" name="paymentMethod">
+                        <option value="현금">현금</option>
+                        <option value="카드">카드</option>
+                        <option value="계좌이체">계좌이체</option>
+                        <option value="기타">기타</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="purchaseNotes">메모</label>
+                    <textarea id="purchaseNotes" name="notes" rows="3"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closePurchaseModal()">취소</button>
+                    <button type="submit" class="btn btn-primary">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="customer-detail.js"></script>
+    <script src="repair-management.js"></script>
+</body>
+</html>

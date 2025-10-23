@@ -288,6 +288,15 @@ body {
     background: #138496;
 }
 
+.view-btn {
+    background: #6c757d;
+    color: white;
+}
+
+.view-btn:hover {
+    background: #5a6268;
+}
+
 .delete-btn {
     background: #dc3545;
     color: white;
@@ -315,11 +324,13 @@ body {
     background: white;
     border-radius: 15px;
     padding: 0;
-    max-width: 500px;
+    max-width: 600px;
     width: 90%;
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    position: relative;
+    margin: 20px;
 }
 
 .modal-header {
@@ -328,6 +339,8 @@ body {
     align-items: center;
     padding: 20px 30px;
     border-bottom: 2px solid #f0f0f0;
+    cursor: move;
+    user-select: none;
 }
 
 .modal-header h2 {
@@ -405,6 +418,317 @@ body {
     color: #666;
     font-size: 14px;
     margin: 0 15px;
+}
+
+/* 고객 상세 정보 페이지 */
+.customer-detail-page {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    margin: 20px auto;
+    max-width: 1400px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.info-section {
+    margin-bottom: 40px;
+    padding: 30px;
+    background: #f8f9fa;
+    border-radius: 15px;
+}
+
+.info-section h2 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.info-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.info-item label {
+    font-weight: 600;
+    color: #666;
+    font-size: 14px;
+}
+
+.info-item span {
+    color: #333;
+    font-size: 16px;
+}
+
+/* 탭 메뉴 */
+.tab-menu {
+    display: flex;
+    border-bottom: 2px solid #e1e5e9;
+    margin-bottom: 30px;
+}
+
+.tab-btn {
+    padding: 15px 30px;
+    border: none;
+    background: none;
+    color: #666;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.tab-btn:hover {
+    color: #1a73e8;
+    background: #f8f9fa;
+}
+
+.tab-btn.active {
+    color: #1a73e8;
+    border-bottom-color: #1a73e8;
+    background: #f8f9fa;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.section-header h3 {
+    color: #333;
+    margin: 0;
+    font-size: 20px;
+}
+
+.table-container {
+    overflow-x: auto;
+    margin-bottom: 30px;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.data-table th {
+    background: #f8f9fa;
+    color: #333;
+    font-weight: 600;
+    padding: 15px 12px;
+    text-align: left;
+    border-bottom: 2px solid #e1e5e9;
+}
+
+.data-table td {
+    padding: 15px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+}
+
+.data-table tr:hover {
+    background: #f8f9fa;
+}
+
+.type-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    display: inline-block;
+    min-width: 60px;
+}
+
+.type-판매 {
+    background: #d4edda;
+    color: #155724;
+}
+
+.type-매입 {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* 폼 행 */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+/* 상품 목록 */
+.item-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.item-row input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+/* 버튼 스타일 */
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #218838;
+}
+
+.btn-warning {
+    background: #ffc107;
+    color: #212529;
+}
+
+.btn-warning:hover {
+    background: #e0a800;
+}
+
+.btn-info {
+    background: #17a2b8;
+    color: white;
+}
+
+.btn-info:hover {
+    background: #138496;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+/* 수리 이력 상태 배지 */
+.status-received {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.status-diagnosis {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.status-repairing {
+    background: #fce4ec;
+    color: #c2185b;
+}
+
+.status-completed {
+    background: #e8f5e8;
+    color: #2e7d32;
+}
+
+.status-warranty {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.status-unknown {
+    background: #f5f5f5;
+    color: #666;
+}
+
+/* 보증 상태 */
+.warranty-active {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.warranty-expired {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+/* 수리 이력 상세 모달 */
+.repair-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.detail-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.detail-item label {
+    font-weight: 600;
+    color: #666;
+    font-size: 14px;
+}
+
+.detail-item span {
+    color: #333;
+    font-size: 16px;
+}
+
+/* 상태 변경 버튼 */
+.status-btn {
+    background: #6f42c1;
+    color: white;
+}
+
+.status-btn:hover {
+    background: #5a32a3;
 }
 
 /* 로그인/회원가입 폼 */
