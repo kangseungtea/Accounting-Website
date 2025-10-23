@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고객 관리 - 깜냥컴퓨터</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 네비게이션 바 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-brand">깜냥컴퓨터</a>
+            <ul class="nav-menu">
+                <li><a href="index.html">홈</a></li>
+                <li><a href="customers.html" class="active">고객</a></li>
+                <li><a href="#" onclick="alert('제품 관리 페이지 (개발 예정)')">제품</a></li>
+                <li><a href="#" onclick="alert('장부 관리 페이지 (개발 예정)')">장부</a></li>
+                <li><a href="#" onclick="alert('회계 관리 페이지 (개발 예정)')">회계</a></li>
+                <li><a href="#" onclick="alert('설정 페이지 (개발 예정)')">설정</a></li>
+            </ul>
+            <div class="user-info">
+                <span id="userName">사용자</span>
+                <button onclick="logout()" class="btn btn-outline">로그아웃</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 고객 관리 화면 -->
+    <div class="customers-page">
+        <div class="page-header">
+            <h1>고객 관리</h1>
+            <button class="btn btn-primary" onclick="showAddCustomerModal()">+ 새 고객 등록</button>
+        </div>
+        
+        <div class="search-filter">
+            <input type="text" id="customerSearch" placeholder="고객명, 전화번호, 이메일로 검색..." onkeyup="searchCustomers()">
+            <select id="statusFilter" onchange="filterCustomers()">
+                <option value="">전체 상태</option>
+                <option value="활성">활성</option>
+                <option value="비활성">비활성</option>
+            </select>
+        </div>
+        
+        <div class="customers-table-container">
+            <table class="customers-table">
+                <thead>
+                    <tr>
+                        <th>이름</th>
+                        <th>회사명</th>
+                        <th>사업자번호</th>
+                        <th>전화번호</th>
+                        <th>이메일</th>
+                        <th>주소</th>
+                        <th>관리번호</th>
+                        <th>등록일</th>
+                        <th>총 구매금액</th>
+                        <th>상태</th>
+                        <th>액션</th>
+                    </tr>
+                </thead>
+                <tbody id="customersTableBody">
+                    <!-- 고객 데이터가 여기에 동적으로 추가됩니다 -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="pagination" id="pagination">
+            <!-- 페이지네이션이 여기에 동적으로 추가됩니다 -->
+        </div>
+    </div>
+
+    <!-- 고객 등록/수정 모달 -->
+    <div class="modal" id="customerModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">고객 등록</h2>
+                <button class="close-btn" onclick="closeCustomerModal()">&times;</button>
+            </div>
+                <form id="customerForm">
+                    <div class="form-group">
+                        <label for="customerName">이름 *</label>
+                        <input type="text" id="customerName" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="customerCompany">회사명</label>
+                        <input type="text" id="customerCompany" name="company">
+                    </div>
+                    <div class="form-group">
+                        <label for="customerBusinessNumber">사업자번호</label>
+                        <input type="text" id="customerBusinessNumber" name="businessNumber" placeholder="000-00-00000">
+                    </div>
+                    <div class="form-group">
+                        <label for="customerPhone">전화번호 *</label>
+                        <input type="tel" id="customerPhone" name="phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="customerEmail">이메일</label>
+                        <input type="email" id="customerEmail" name="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="customerAddress">주소</label>
+                        <input type="text" id="customerAddress" name="address">
+                    </div>
+                    <div class="form-group">
+                        <label for="customerManagementNumber">관리번호</label>
+                        <input type="text" id="customerManagementNumber" name="managementNumber">
+                    </div>
+                    <div class="form-group">
+                        <label for="customerStatus">상태</label>
+                        <select id="customerStatus" name="status">
+                            <option value="활성">활성</option>
+                            <option value="비활성">비활성</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="customerNotes">메모</label>
+                        <textarea id="customerNotes" name="notes" rows="3"></textarea>
+                    </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeCustomerModal()">취소</button>
+                    <button type="submit" class="btn btn-primary">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="customers.js"></script>
+</body>
+</html>

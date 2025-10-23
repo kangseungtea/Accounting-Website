@@ -58,7 +58,7 @@ function hideAllScreens() {
 
 // 메뉴 함수들
 function showCustomers() {
-    alert('고객 관리 페이지 (개발 예정)');
+    window.location.href = 'customers.html';
 }
 
 function showProducts() {
@@ -78,10 +78,25 @@ function showSettings() {
 }
 
 // 로그아웃
-function logout() {
-    localStorage.removeItem('userInfo');
-    showHome();
-    alert('로그아웃되었습니다.');
+async function logout() {
+    try {
+        const response = await fetch('/api/logout', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            showHome();
+            alert('로그아웃되었습니다.');
+        } else {
+            showHome();
+            alert('로그아웃되었습니다.');
+        }
+    } catch (error) {
+        showHome();
+        alert('로그아웃되었습니다.');
+    }
 }
 
 // 메시지 표시 함수
@@ -149,8 +164,6 @@ loginForm.addEventListener('submit', async (e) => {
         
         if (data.success) {
             showMessage(data.message, 'success');
-            // 사용자 정보 저장
-            localStorage.setItem('userInfo', JSON.stringify(data.user));
             // 로그인 성공 시 대시보드로 이동
             setTimeout(() => {
                 showDashboard();
@@ -230,14 +243,28 @@ document.querySelectorAll('input').forEach(input => {
     });
 });
 
+
 // 페이지 로드 시 사용자 상태 확인
 window.addEventListener('load', () => {
-    const userInfo = localStorage.getItem('userInfo');
-    if (userInfo) {
-        const user = JSON.parse(userInfo);
-        showDashboard();
-        document.getElementById('userName').textContent = user.name;
-    } else {
+    // 서버에서 사용자 상태 확인
+    checkUserStatus();
+});
+
+// 사용자 상태 확인
+async function checkUserStatus() {
+    try {
+        const response = await fetch('/api/check-auth', {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            showDashboard();
+            document.getElementById('userName').textContent = result.user.name;
+        } else {
+            showHome();
+        }
+    } catch (error) {
         showHome();
     }
-});
+}
