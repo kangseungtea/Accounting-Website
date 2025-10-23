@@ -20,6 +20,96 @@ function getCustomerIdFromURL() {
     currentCustomerId = urlParams.get('id');
 }
 
+// 수리 이력 로드
+async function loadRepairs() {
+    try {
+        const response = await fetch(`/api/repairs?customerId=${currentCustomerId}`, {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            displayRepairs(result.data);
+        } else {
+            showMessage('수리 이력을 불러오는데 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 수리 이력 표시
+function displayRepairs(repairs) {
+    const tbody = document.getElementById('repairsTableBody');
+    tbody.innerHTML = '';
+
+    if (repairs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #666;">수리 이력이 없습니다.</td></tr>';
+        return;
+    }
+
+    repairs.forEach(repair => {
+        const row = document.createElement('tr');
+        const statusBadge = getStatusBadge(repair.status);
+        const warrantyStatus = getWarrantyStatus(repair);
+
+        row.innerHTML = `
+            <td>${new Date(repair.repairDate).toLocaleDateString('ko-KR')}</td>
+            <td>${repair.deviceType}</td>
+            <td>${repair.deviceModel || '-'}</td>
+            <td>${repair.problem}</td>
+            <td>${repair.solution || '-'}</td>
+            <td>${repair.totalCost.toLocaleString('ko-KR')}원</td>
+            <td>${statusBadge}</td>
+            <td>${warrantyStatus}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="action-btn view-btn" onclick="viewRepairDetail(${repair.id})">상세</button>
+                    <button class="action-btn edit-btn" onclick="editRepair(${repair.id})">수정</button>
+                    <button class="action-btn status-btn" onclick="changeRepairStatus(${repair.id})">상태변경</button>
+                    <button class="action-btn delete-btn" onclick="deleteRepair(${repair.id})">삭제</button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// 상태 배지 생성
+function getStatusBadge(status) {
+    const statusMap = {
+        '접수': { class: 'status-received', text: '접수' },
+        '위탁접수': { class: 'status-diagnosis', text: '위탁접수' },
+        '완료': { class: 'status-completed', text: '완료' },
+        '보증중': { class: 'status-warranty', text: '보증중' }
+    };
+    
+    const statusInfo = statusMap[status] || { class: 'status-unknown', text: status };
+    return `<span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>`;
+}
+
+// 보증 상태 확인
+function getWarrantyStatus(repair) {
+    if (!repair.warranty) return '-';
+    
+    // "2025-01-01~2026-01-03" 형식 파싱
+    const parts = repair.warranty.split('~');
+    if (parts.length !== 2) return '-';
+    
+    const warrantyEndDate = new Date(parts[1].trim());
+    const today = new Date();
+    
+    // 날짜 유효성 검사
+    if (isNaN(warrantyEndDate.getTime())) return '-';
+    
+    if (today > warrantyEndDate) {
+        return `<span class="warranty-expired">만료 (${warrantyEndDate.toLocaleDateString('ko-KR')})</span>`;
+    } else {
+        const daysLeft = Math.ceil((warrantyEndDate - today) / (24 * 60 * 60 * 1000));
+        return `<span class="warranty-active">${daysLeft}일 남음</span>`;
+    }
+}
+
 // 사용자 상태 확인
 async function checkUserStatus() {
     try {

@@ -9,6 +9,19 @@ if (typeof currentCustomerId === 'undefined') {
 function addRepair() {
     console.log('addRepair 함수 호출됨, currentCustomerId:', currentCustomerId);
     
+    // currentCustomerId 확인
+    if (!currentCustomerId) {
+        // URL에서 다시 가져오기 시도
+        const urlParams = new URLSearchParams(window.location.search);
+        currentCustomerId = urlParams.get('id');
+        console.log('URL에서 재확인한 currentCustomerId:', currentCustomerId);
+        
+        if (!currentCustomerId) {
+            showMessage('고객 ID를 찾을 수 없습니다. 페이지를 새로고침해주세요.', 'error');
+            return;
+        }
+    }
+    
     document.getElementById('repairModalTitle').textContent = '수리 이력 추가';
     
     // 폼 필드 개별 초기화 (reset() 대신)
@@ -69,6 +82,18 @@ function closeRepairModal() {
 
 // 수리 이력 로드
 async function loadRepairs() {
+    // currentCustomerId 재확인
+    if (!currentCustomerId) {
+        const urlParams = new URLSearchParams(window.location.search);
+        currentCustomerId = urlParams.get('id');
+        console.log('loadRepairs에서 재확인한 currentCustomerId:', currentCustomerId);
+    }
+    
+    if (!currentCustomerId) {
+        console.error('currentCustomerId가 없어서 수리 이력을 불러올 수 없습니다.');
+        return;
+    }
+    
     try {
         const response = await fetch(`/api/repairs?customerId=${currentCustomerId}`, {
             credentials: 'include'
