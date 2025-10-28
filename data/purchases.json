@@ -22,5 +22,83 @@
     "paymentMethod": "카드",
     "status": "완료",
     "notes": "추가 주문"
+  },
+  {
+    "id": 1759977215104,
+    "customerId": 1759959158536,
+    "purchaseDate": "2025-10-01T00:00:00.000Z",
+    "type": "매입",
+    "items": [
+      {
+        "productId": "1759959678459",
+        "name": "AK620 DIGITAL SE [블랙]",
+        "quantity": 1,
+        "unitPrice": 65000,
+        "totalPrice": 65000
+      }
+    ],
+    "totalAmount": 65000,
+    "paymentMethod": "현금",
+    "status": "완료",
+    "notes": "선출고 제품 ",
+    "taxInfo": {
+      "option": "included",
+      "subtotal": 65000,
+      "tax": 5909,
+      "total": 65000
+    },
+    "purchaseCode": "P251009001"
+  },
+  {
+    "id": 1759977283914,
+    "customerId": 1759932441952,
+    "purchaseDate": "2025-10-02T00:00:00.000Z",
+    "type": "매입",
+    "items": [
+      {
+        "productId": "1759936792842",
+        "name": "Windows 11 Home [COEM(DSP)/한글/64bit]",
+        "quantity": 1,
+        "unitPrice": 175000,
+        "totalPrice": 175000
+      }
+    ],
+    "totalAmount": 175000,
+    "paymentMethod": "현금",
+    "status": "완료",
+    "notes": "",
+    "taxInfo": {
+      "option": "included",
+      "subtotal": 175000,
+      "tax": 15909,
+      "total": 175000
+    },
+    "purchaseCode": "P251009001"
+  },
+  {
+    "id": 1759977319971,
+    "customerId": 1759932441952,
+    "purchaseDate": "2025-10-09T00:00:00.000Z",
+    "type": "매입",
+    "items": [
+      {
+        "productId": "1759938418254",
+        "name": "타무즈 DDR4 PC4-25600 [16GB] (3200)",
+        "quantity": 2,
+        "unitPrice": 51500,
+        "totalPrice": 103000
+      }
+    ],
+    "totalAmount": 103000,
+    "paymentMethod": "현금",
+    "status": "완료",
+    "notes": "",
+    "taxInfo": {
+      "option": "included",
+      "subtotal": 103000,
+      "tax": 9364,
+      "total": 103000
+    },
+    "purchaseCode": "P251009001"
   }
 ]

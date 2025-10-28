@@ -351,16 +351,34 @@ app.get('/api/customers', requireAuth, (req, res) => {
   const PURCHASES_FILE = path.join(DATA_DIR, 'purchases.json');
   const purchases = loadData(PURCHASES_FILE, purchaseRecords);
   
-  // 각 고객의 총 구매금액 계산
+  // 수리이력에서 총 수리비용 계산
+  const REPAIRS_FILE = path.join(DATA_DIR, 'repairs.json');
+  const repairs = loadData(REPAIRS_FILE, repairRecords);
+  
+  // 각 고객의 총 구매금액과 수리비용 계산
   filteredCustomers = filteredCustomers.map(customer => {
     const customerPurchases = purchases.filter(p => p.customerId === customer.id);
     const totalSpent = customerPurchases.reduce((sum, purchase) => {
       return sum + (purchase.totalAmount || 0);
     }, 0);
     
+    const customerRepairs = repairs.filter(r => r.customerId === customer.id);
+    const totalRepairCost = customerRepairs.reduce((sum, repair) => {
+      return sum + (repair.totalCost || 0);
+    }, 0);
+    
+    // 디버깅 로그
+    if (customer.id === 1759925543792) {
+      console.log(`고객 ${customer.name} (ID: ${customer.id}) 구매 이력:`, customerPurchases);
+      console.log(`총 구매 금액: ${totalSpent}원`);
+      console.log(`수리 이력:`, customerRepairs);
+      console.log(`총 수리 비용: ${totalRepairCost}원`);
+    }
+    
     return {
       ...customer,
-      totalSpent: totalSpent
+      totalSpent: totalSpent,
+      totalRepairCost: totalRepairCost
     };
   });
   

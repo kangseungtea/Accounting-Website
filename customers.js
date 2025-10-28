@@ -60,7 +60,7 @@ function displayCustomers(customers) {
     tbody.innerHTML = '';
     
     if (customers.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #666;">등록된 고객이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #666;">등록된 고객이 없습니다.</td></tr>';
         return;
     }
     
@@ -73,6 +73,7 @@ function displayCustomers(customers) {
             <td>${customer.address || '-'}</td>
             <td>${customer.managementNumber || '-'}</td>
             <td>${customer.totalSpent.toLocaleString('ko-KR')}원</td>
+            <td>${customer.totalRepairCost.toLocaleString('ko-KR')}원</td>
             <td><span class="status-badge status-${customer.status === '활성' ? 'active' : 'inactive'}">${customer.status}</span></td>
             <td>
                 <div class="action-buttons">

@@ -46,5 +46,21 @@
     "visitCount": 0,
     "status": "활성",
     "notes": ""
+  },
+  {
+    "id": 1759977387288,
+    "name": "강승태",
+    "company": "",
+    "businessNumber": "",
+    "phone": "01047187154",
+    "email": "",
+    "address": "서울 강서구 금낭화로 43",
+    "managementNumber": "KKAM20251008",
+    "registrationDate": "2025-10-09T02:36:27.288Z",
+    "lastVisit": null,
+    "totalSpent": 0,
+    "visitCount": 0,
+    "status": "활성",
+    "notes": ""
   }
 ]
