@@ -26,6 +26,13 @@ class DetailTable {
         }
         
         tbody.innerHTML = data.map((item, index) => {
+            console.log(`[${index}] 테이블 렌더링:`, { 
+                code: item.code, 
+                customerId: item.customerId,
+                customer_id: item.customer_id,
+                customer: item.customer,
+                전체객체: item
+            });
             const cells = this.getTableCells(item, type);
             return `<tr>${cells.join('')}</tr>`;
         }).join('');
@@ -35,15 +42,15 @@ class DetailTable {
     getTableHeaders(type) {
         switch (type) {
             case 'revenue':
-                return ['번호', '거래일', '거래코드', '고객명', '제품명', '수량', '단가', '총액', '상태'];
+                return ['번호', '거래일', '거래코드', '고객명', '제품명', '수량', '단가', '총액', '상태', '관리'];
             case 'expense':
-                return ['거래일', '거래코드', '공급업체', '제품명', '수량', '단가', '총액', '상태'];
+                return ['거래일', '거래코드', '고객명', '제품명', '수량', '단가', '총액', '상태', '관리'];
             case 'vat':
-                return ['거래일', '거래코드', '구분', '공급가액', '부가세', '총액', '상태'];
+                return ['거래일', '거래코드', '구분', '공급가액', '부가세', '총액', '상태', '관리'];
             case 'net':
-                return ['거래일', '거래코드', '구분', '매출액', '매입액', '순이익', '마진율'];
+                return ['거래일', '거래코드', '구분', '매출액', '매입액', '순이익', '마진율', '관리'];
             default:
-                return ['거래일', '거래코드', '내용', '금액', '상태'];
+                return ['거래일', '거래코드', '내용', '금액', '상태', '관리'];
         }
     }
 
@@ -56,34 +63,39 @@ class DetailTable {
             // 제품명을 11자로 제한하고 말줄임표 추가
             return product.length > 11 ? product.substring(0, 11) + '...' : product;
         };
-        const formatCustomer = (customer, customerId) => {
+        const formatCustomer = (customer, customerId, item) => {
+            // customerId가 없으면 item에서 customer_id 또는 customerId 찾기
+            const id = customerId || item?.customer_id || item?.customerId;
+            console.log('formatCustomer 호출:', { customer, customerId, id, item });
             if (!customer || customer === '-') return '-';
             // 고객명을 클릭 가능한 링크로 변환
-            return `<span style="cursor: pointer; color: #007bff; text-decoration: underline;" onclick="openCustomerDetail('${customer}', '${customerId}')">${customer}</span>`;
+            return `<span style="cursor: pointer; color: #007bff; text-decoration: underline;" onclick="openCustomerDetail('${customer}', '${id}')">${customer}</span>`;
         };
         const baseStyle = 'padding: 8px; border: 1px solid #dee2e6;';
         
         const cellConfigs = {
             revenue: [
-                { value: item.customerId || '-', style: `${baseStyle} text-align: center; font-weight: bold;` },
+                { value: item.customerId || item.customer_id || '-', style: `${baseStyle} text-align: center; font-weight: bold;` },
                 { value: formatDate(item.date), style: baseStyle },
                 { value: item.code || '-', style: baseStyle },
-                { value: formatCustomer(item.customer, item.customerId), style: baseStyle },
+                { value: formatCustomer(item.customer, item.customerId, item), style: baseStyle },
                 { value: formatProduct(item.product), style: baseStyle },
                 { value: `${item.quantity || 0}개`, style: `${baseStyle} text-align: center;` },
                 { value: `${formatNumber(item.unitPrice || 0)}원`, style: `${baseStyle} text-align: right;` },
                 { value: `${formatNumber(item.totalAmount || 0)}원`, style: `${baseStyle} text-align: right; color: #28a745; font-weight: bold;` },
-                { value: item.status || '완료', style: baseStyle }
+                { value: item.status || '완료', style: baseStyle },
+                { value: this.getActionButtons(item, type), style: `${baseStyle} text-align: center;` }
             ],
             expense: [
                 { value: formatDate(item.date), style: baseStyle },
                 { value: item.code || '-', style: baseStyle },
-                { value: item.supplier || '-', style: baseStyle },
+                { value: formatCustomer(item.customer, item.customerId || item.customer_id, item), style: baseStyle },
                 { value: formatProduct(item.product), style: baseStyle },
                 { value: `${item.quantity || 0}개`, style: `${baseStyle} text-align: center;` },
                 { value: `${formatNumber(item.unitPrice || 0)}원`, style: `${baseStyle} text-align: right;` },
                 { value: `${formatNumber(item.totalAmount || 0)}원`, style: `${baseStyle} text-align: right; color: #dc3545; font-weight: bold;` },
-                { value: item.status || '완료', style: baseStyle }
+                { value: item.status || '완료', style: baseStyle },
+                { value: this.getActionButtons(item, type), style: `${baseStyle} text-align: center;` }
             ],
             vat: [
                 { value: formatDate(item.date), style: baseStyle },
@@ -92,7 +104,8 @@ class DetailTable {
                 { value: `${formatNumber(item.supplyPrice || 0)}원`, style: `${baseStyle} text-align: right;` },
                 { value: `${formatNumber(item.vatAmount || 0)}원`, style: `${baseStyle} text-align: right;` },
                 { value: `${formatNumber(item.totalAmount || 0)}원`, style: `${baseStyle} text-align: right; font-weight: bold;` },
-                { value: item.status || '완료', style: baseStyle }
+                { value: item.status || '완료', style: baseStyle },
+                { value: this.getActionButtons(item, type), style: `${baseStyle} text-align: center;` }
             ],
             net: [
                 { value: formatDate(item.date), style: baseStyle },
@@ -101,14 +114,16 @@ class DetailTable {
                 { value: `${formatNumber(item.type === 'revenue' ? item.totalAmount : 0)}원`, style: `${baseStyle} text-align: right; color: #28a745;` },
                 { value: `${formatNumber(item.type === 'expense' ? item.totalAmount : 0)}원`, style: `${baseStyle} text-align: right; color: #dc3545;` },
                 { value: `${formatNumber(item.type === 'revenue' ? item.totalAmount : -item.totalAmount)}원`, style: `${baseStyle} text-align: right; font-weight: bold; color: ${(item.type === 'revenue' ? item.totalAmount : -item.totalAmount) >= 0 ? '#28a745' : '#dc3545'};` },
-                { value: `0%`, style: `${baseStyle} text-align: center;` }
+                { value: `0%`, style: `${baseStyle} text-align: center;` },
+                { value: this.getActionButtons(item, type), style: `${baseStyle} text-align: center;` }
             ],
             default: [
                 { value: formatDate(item.date), style: baseStyle },
                 { value: item.code || '-', style: baseStyle },
                 { value: item.description || '-', style: baseStyle },
                 { value: `${formatNumber(item.amount || 0)}원`, style: `${baseStyle} text-align: right;` },
-                { value: item.status || '완료', style: baseStyle }
+                { value: item.status || '완료', style: baseStyle },
+                { value: this.getActionButtons(item, type), style: `${baseStyle} text-align: center;` }
             ]
         };
         
@@ -140,9 +155,75 @@ class DetailTable {
         }
     }
 
+    // 액션 버튼 생성
+    getActionButtons(item, type) {
+        const deleteButton = `<button onclick="deleteTransactionItem('${item.code}', '${type}')" 
+            style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+            삭제
+        </button>`;
+        
+        return deleteButton;
+    }
+
     // 테이블 초기화
     reset() {
         this.showLoading();
+    }
+}
+
+// 전역 함수: 거래 항목 삭제
+async function deleteTransactionItem(code, type) {
+    const typeLabels = {
+        'revenue': '매출',
+        'expense': '매입',
+        'vat': '부가세',
+        'net': '순이익'
+    };
+    
+    if (!confirm(`정말로 이 항목을 삭제하시겠습니까?\n\n거래코드: ${code}\n유형: ${typeLabels[type] || type}`)) {
+        return;
+    }
+    
+    try {
+        let response;
+        
+        if (type === 'revenue' || type === 'expense') {
+            // 구매 데이터 삭제 (P 접두사로 시작하는 코드)
+            if (code.startsWith('P')) {
+                const purchaseId = code.replace(/^P/, ''); // P 접두사 제거
+                response = await fetch(`/api/purchases/${purchaseId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+            }
+            // 수리 데이터 삭제 (R 접두사로 시작하는 코드)
+            else if (code.startsWith('R')) {
+                const repairId = code.replace(/^R/, ''); // R 접두사 제거
+                response = await fetch(`/api/repairs/${repairId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+            } else {
+                alert('알 수 없는 거래코드 형식입니다.');
+                return;
+            }
+            
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                alert('항목이 성공적으로 삭제되었습니다.');
+                // 페이지 새로고침하여 업데이트된 데이터 표시
+                window.location.reload();
+            } else {
+                alert('삭제에 실패했습니다: ' + (result.message || '알 수 없는 오류'));
+            }
+        } else {
+            alert('지원되지 않는 데이터 유형입니다.');
+        }
+        
+    } catch (error) {
+        console.error('삭제 오류:', error);
+        alert('삭제 중 오류가 발생했습니다.');
     }
 }
 

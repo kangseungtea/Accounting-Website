@@ -432,11 +432,11 @@ function displayPurchasesPage() {
                 row.innerHTML = `
                     <td style="padding: 12px 8px; border: 1px solid #dee2e6; font-weight: 600;">${purchase.purchase_code || '-'}</td>
                     <td style="padding: 12px 8px; border: 1px solid #dee2e6;">${purchase.purchase_date ? new Date(purchase.purchase_date).toLocaleDateString('ko-KR') : '-'}</td>
-                    <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center;">
-                        <span class="purchase-type purchase-type-${purchase.type}">
-                            ${purchase.type === '구매' ? '🛒' : purchase.type === '반품' ? '↩️' : '💰'} ${purchase.type}
-                        </span>
-                    </td>
+                <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center;">
+                    <span class="purchase-type purchase-type-${purchase.type}">
+                        ${purchase.type === '구매' ? '🛒 구매' : purchase.type === '반품' ? '↩️ 반품' : '💰 판매'}
+                    </span>
+                </td>
                     <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: left; font-size: 12px; max-width: 200px;">
                         ${item.product_name || item.name || '상품명 없음'}
                     </td>
@@ -450,6 +450,7 @@ function displayPurchasesPage() {
                         <button onclick="editProductPurchase(${purchase.id}, '${(item.product_name || item.name || '상품명 없음').replace(/'/g, "\\'")}', ${item.quantity || 1}, ${item.unit_price || 0}, ${supplyAmount + taxAmount})" style="background: #ffc107; color: black; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 3px;">수정</button>
                         <button onclick="returnProduct(${purchase.id}, '${(item.product_name || item.name || '상품명 없음').replace(/'/g, "\\'")}', ${item.quantity || 1}, ${item.unit_price || 0}, ${supplyAmount + taxAmount})" style="background: #6c757d; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 3px;">반품</button>
                         <button onclick="deleteProductFromPurchase(${purchase.id}, '${(item.product_name || item.name || '상품명 없음').replace(/'/g, "\\'")}')" style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">상품삭제</button>
+                        <button onclick="deletePurchase(${purchase.id})" style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 3px;">전체삭제</button>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -480,7 +481,7 @@ function displayPurchasesPage() {
             <td style="padding: 12px 8px; border: 1px solid #dee2e6;">${purchase.purchase_date ? new Date(purchase.purchase_date).toLocaleDateString('ko-KR') : '-'}</td>
             <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center;">
                 <span class="purchase-type purchase-type-${purchase.type}">
-                    ${purchase.type === '구매' ? '🛒' : purchase.type === '반품' ? '↩️' : '💰'} ${purchase.type}
+                    ${purchase.type === '구매' ? '🛒 구매' : purchase.type === '반품' ? '↩️ 반품' : '💰 판매'}
                 </span>
             </td>
             <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: left; font-size: 12px; max-width: 200px;">
@@ -495,7 +496,8 @@ function displayPurchasesPage() {
             <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center;">
                 <button onclick="viewPurchaseDetail(${purchase.id})" style="background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 3px;">상세</button>
                 <button onclick="editPurchase(${purchase.id})" style="background: #ffc107; color: black; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 3px;">수정</button>
-                <button onclick="returnPurchase(${purchase.id})" style="background: #6c757d; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">반품</button>
+                <button onclick="returnPurchase(${purchase.id})" style="background: #6c757d; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 3px;">반품</button>
+                <button onclick="deletePurchase(${purchase.id})" style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">삭제</button>
             </td>
         `;
         tbody.appendChild(row);

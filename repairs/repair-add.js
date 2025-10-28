@@ -964,6 +964,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             window.location.reload();
                         }, 1000);
                     }
+                    
+                    // 다른 탭/창의 대시보드에게 변경 알림
+                    try {
+                        localStorage.setItem('repairDataChanged', 'true');
+                        console.log('대시보드에 수리 데이터 변경 알림 전송');
+                    } catch (e) {
+                        console.error('localStorage 접근 오류:', e);
+                    }
                 } else {
                     showMessage(result.message || '수리 이력 저장에 실패했습니다.', 'error');
                 }

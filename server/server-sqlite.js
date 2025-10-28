@@ -21,6 +21,7 @@ const backupConfigApis = require('./backup-config-apis');
 const adminApis = require('./admin-apis');
 const categoryUtils = require('./category-utils');
 const returnApis = require('./return-apis');
+const transactionApis = require('./transaction-apis');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -486,6 +487,9 @@ app.use('/', categoryApis);
 
 // 반품 관리 API 라우터 사용
 app.use('/', returnApis);
+
+// Transactions 기반 통계 API 라우터 사용
+app.use('/', transactionApis);
 
 // 기타 API 라우터 사용
 app.use('/', miscApis);

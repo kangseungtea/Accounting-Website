@@ -98,6 +98,32 @@ router.post('/api/purchases', getRequireAuth(), (req, res) => {
                         console.error('구매 상품 추가 오류:', err.message);
                         res.status(500).json({ success: false, message: '구매 상품 추가에 실패했습니다.' });
                     } else {
+                        // 구매 내역을 Transactions 테이블에 저장 (type이 '구매'인 경우)
+                        if (type === '구매') {
+                            // 각 상품별로 Transactions에 기록
+                            const insertTransaction = db.prepare('INSERT INTO transactions (transaction_date, transaction_type, reference_type, reference_id, customer_id, product_id, amount, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+                            
+                            items.forEach(item => {
+                                const itemTotal = item.quantity * item.unitPrice;
+                                insertTransaction.run([
+                                    purchaseDate,
+                                    'PURCHASE',
+                                    'purchase',
+                                    purchaseCode,
+                                    customerId,
+                                    item.productId || null,
+                                    -itemTotal, // 구매는 음수로 기록
+                                    `${item.productName} - 구매`
+                                ]);
+                            });
+                            
+                            insertTransaction.finalize((err) => {
+                                if (err) {
+                                    console.error('Transactions 테이블 저장 오류:', err.message);
+                                }
+                            });
+                        }
+                        
                         res.json({ success: true, message: '구매 이력이 성공적으로 추가되었습니다.', data: { id: purchaseId } });
                     }
                 });

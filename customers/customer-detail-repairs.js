@@ -420,7 +420,7 @@ async function viewRepairDetail(repairId) {
             }
             
             // 모달 표시
-            document.getElementById('repairDetailModal').style.display = 'flex';
+            document.getElementById('customerRepairDetailModal').style.display = 'flex';
             
         } else {
             showMessage('수리 이력을 불러오는데 실패했습니다: ' + result.message, 'error');
@@ -438,7 +438,7 @@ async function viewRepairDetail(repairId) {
 
 // 수리 이력 상세 모달 닫기
 function closeRepairDetailModal() {
-    const modal = document.getElementById('repairDetailModal');
+    const modal = document.getElementById('customerRepairDetailModal');
     if (modal) {
         modal.style.display = 'none';
     }
@@ -448,7 +448,7 @@ function closeRepairDetailModal() {
 function printRepairDetailFromModal() {
     console.log('🖨️ 프린트 함수 시작');
     
-    const repairDetailModal = document.getElementById('repairDetailModal');
+    const repairDetailModal = document.getElementById('customerRepairDetailModal');
     if (!repairDetailModal) {
         console.error('수리 이력 상세 모달을 찾을 수 없습니다.');
         alert('수리 이력 상세 모달을 찾을 수 없습니다. 먼저 수리 이력을 선택해주세요.');
@@ -789,10 +789,8 @@ function updateRepairStatus(repairs) {
         warrantyElement.textContent = `${statusCounts['보증중']}건`;
     }
     
-    // 상태 카드에 클릭 이벤트 추가 (DOM 렌더링 완료 후)
-    setTimeout(() => {
-        addStatusCardClickEvents(repairs);
-    }, 100);
+    // 상태 카드 클릭 이벤트는 메인 대시보드에만 필요
+    // 고객 상세 페이지에서는 불필요함
     
     console.log('✅ 수리 현황 업데이트 완료');
 }
@@ -1199,6 +1197,7 @@ document.addEventListener('click', function(e) {
 
 // 전역 함수 등록
 window.viewRepairDetail = viewRepairDetail;
+window.openRepairDetailModal = viewRepairDetail; // 별칭 추가
 window.closeRepairDetailModal = closeRepairDetailModal;
 window.printRepairDetail = printRepairDetail;
 window.editRepair = editRepair;

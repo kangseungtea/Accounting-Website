@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -219,153 +219,35 @@
 
     </div>
     
-    <!-- 수리 현황 모달 -->
-    <div id="repairStatusModal" style="display: none;">
-        <div class="modal-content" style="max-width: 1200px; max-height: 90vh; display: flex; flex-direction: column;">
-            <div class="modal-header" style="flex-shrink: 0;">
-                <h2 id="repairStatusModalTitle">수리 현황 상세</h2>
-                <button class="close-btn" onclick="closeRepairStatusModal()">&times;</button>
-            </div>
-            
-            <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 20px; max-height: calc(90vh - 120px); scrollbar-width: thin; scrollbar-color: #ced4da #f8f9fa;">
-                <!-- 필터 섹션 -->
-                <div class="filter-section" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                    <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-                        <div>
-                            <label for="statusFilter">상태 필터:</label>
-                            <select id="statusFilter" onchange="updateRepairStatusFilter()" style="margin-left: 8px; padding: 5px 10px; border: 1px solid #ced4da; border-radius: 4px;">
-                                <option value="all">전체</option>
-                                <option value="접수">접수</option>
-                                <option value="위탁 접수">위탁 접수</option>
-                                <option value="수리 완료">수리 완료</option>
-                                <option value="보증 중">보증 중</option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label for="dateRangeFilter">기간 필터:</label>
-                            <select id="dateRangeFilter" onchange="updateRepairStatusFilter()" style="margin-left: 8px; padding: 5px 10px; border: 1px solid #ced4da; border-radius: 4px;">
-                                <option value="today">오늘</option>
-                                <option value="week">이번 주</option>
-                                <option value="month" selected>이번 달</option>
-                                <option value="quarter">이번 분기</option>
-                                <option value="year">올해</option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label for="searchInput">검색:</label>
-                            <input type="text" id="searchInput" placeholder="고객명, 기기명, 번호 검색..." 
-                                   onkeyup="filterRepairStatusTable()" 
-                                   style="margin-left: 8px; padding: 5px 10px; border: 1px solid #ced4da; border-radius: 4px; width: 250px;">
-                        </div>
-                        
-                        <button onclick="loadRepairStatusData()" class="btn btn-primary" style="padding: 6px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                            🔄 새로고침
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- 요약 정보 -->
-                <div id="repairStatusSummary" style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px;">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                        <div><strong>총 수리 건수:</strong> <span id="totalRepairCount">0건</span></div>
-                        <div><strong>접수 대기:</strong> <span id="summaryPendingCount">0건</span></div>
-                        <div><strong>진행 중:</strong> <span id="summaryInProgressCount">0건</span></div>
-                        <div><strong>완료:</strong> <span id="summaryCompletedCount">0건</span></div>
-                        <div><strong>보증 중:</strong> <span id="summaryWarrantyCount">0건</span></div>
-                    </div>
-                </div>
-                
-                <!-- 수리 현황 테이블 -->
-                <div style="overflow-x: auto; max-height: 500px; border: 1px solid #dee2e6; border-radius: 8px;">
-                    <table id="repairStatusTable" style="width: 100%; border-collapse: collapse; font-size: 14px; background: white;">
-                        <thead id="repairStatusTableHead" style="background: #f8f9fa; position: sticky; top: 0; z-index: 10;">
-                            <tr>
-                                <th style="padding: 12px; border: 1px solid #dee2e6; text-align: center; min-width: 80px;">번호</th>
-                                <th style="padding: 12px; border: 1px solid #dee2e6; text-align: center; min-width: 100px;">접수일</th>
-                                <th style="padding: 12px; border: 1px solid #dee2e6; text-align: center; min-width: 120px;">고객명</th>
-                                <th style="padding: 12px; border: 1px solid #dee2e6; text-align: center; min-width: 150px;">기기명</th>
-                                <th style="padding: 12px; border: 1px solid #dee2e6; text-align: center; min-width: 200px;">문제</th>
-                                <th style="padding: 12px; border: 1px solid #dee2e6; text-align: center; min-width: 100px;">상태</th>
-                                <th style="padding: 12px; border: 1px solid #dee2e6; text-align: center; min-width: 100px;">수리비</th>
-                                <th style="padding: 12px; border: 1px solid #dee2e6; text-align: center; min-width: 100px;">완료일</th>
-                                <th style="padding: 12px; border: 1px solid #dee2e6; text-align: center; min-width: 80px;">액션</th>
-                            </tr>
-                        </thead>
-                        <tbody id="repairStatusTableBody">
-                            <tr>
-                                <td colspan="9" style="text-align: center; padding: 40px; color: #6c757d;">
-                                    <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-                                        <div style="font-size: 24px;">📋</div>
-                                        <div>수리 현황 데이터를 불러오는 중...</div>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                
-                <!-- 페이지네이션 -->
-                <div id="repairStatusPagination" style="margin-top: 20px; display: flex; justify-content: center; align-items: center; gap: 10px;">
-                    <button onclick="changeRepairStatusPage(-1)" class="btn btn-outline" style="padding: 8px 12px; border: 1px solid #ced4da; background: white; border-radius: 4px; cursor: pointer;">이전</button>
-                    <span id="repairStatusPageInfo" style="padding: 8px 15px; background: #f8f9fa; border-radius: 4px;">1 / 1</span>
-                    <button onclick="changeRepairStatusPage(1)" class="btn btn-outline" style="padding: 8px 12px; border: 1px solid #ced4da; background: white; border-radius: 4px; cursor: pointer;">다음</button>
-                </div>
-            </div>
-            
-            <div class="modal-footer" style="flex-shrink: 0; padding: 20px; border-top: 1px solid #e9ecef; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center;">
-                <div style="color: #6c757d; font-size: 14px;">
-                    <span id="repairStatusTableInfo">총 0건의 수리 현황</span>
-                </div>
-                <div>
-                    <button type="button" class="btn btn-outline" onclick="closeRepairStatusModal()" style="padding: 8px 20px; border: 1px solid #ced4da; background: white; border-radius: 4px; cursor: pointer;">닫기</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 수리 상세 정보 모달 -->
-    <div id="repairDetailModal" style="display: none;">
-        <div class="modal-content" style="max-width: 800px; max-height: 90vh; display: flex; flex-direction: column;">
-            <div class="modal-header" style="flex-shrink: 0;">
-                <h2 id="repairDetailModalTitle">수리 상세 정보</h2>
-                <button class="close-btn" onclick="closeRepairDetailModal()">&times;</button>
-            </div>
-            
-            <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 20px; max-height: calc(90vh - 120px);">
-                <div id="repairDetailContent">
-                    <!-- 수리 상세 정보가 여기에 동적으로 로드됩니다 -->
-                </div>
-            </div>
-            
-            <div class="modal-footer" style="flex-shrink: 0; padding: 20px; border-top: 1px solid #e9ecef; background: #f8f9fa; text-align: right;">
-                <button type="button" class="btn btn-outline" onclick="closeRepairDetailModal()" style="padding: 8px 20px; border: 1px solid #ced4da; background: white; border-radius: 4px; cursor: pointer;">닫기</button>
-            </div>
-        </div>
-    </div>
+    <!-- 모달 컨테이너 (JavaScript로 동적 로드) -->
+    <div id="modalShell"></div>
     
-    <!-- 매출 관련 모듈들 -->
-    <script src="/accounting/modules/revenue-calculator.js"></script>
-    <script src="/accounting/modules/revenue-ui.js"></script>
-    <script src="/accounting/modules/revenue-utils.js"></script>
-    <script src="/accounting/modules/sales-analysis-table.js"></script>
-    <script src="/accounting/modules/analysis-table.js"></script>
-    <script src="/accounting/modules/expense-calculator.js"></script>
-    <script src="/accounting/modules/stock-calculator.js"></script>
-    <script src="/products/category-manager.js"></script>
-    <script src="/revenue-files/detail-table.js"></script>
     <script>
-        // DetailTable 모듈 로드 확인 및 script.js 로드
-        window.addEventListener('load', function() {
-            console.log('DetailTable 모듈 상태:', typeof DetailTable);
-            if (typeof DetailTable === 'undefined') {
-                console.error('DetailTable 모듈이 로드되지 않았습니다!');
-            } else {
-                console.log('DetailTable 모듈이 정상적으로 로드되었습니다.');
+        // 모달 HTML 동적 로드
+        async function loadModals() {
+            const modalContainer = document.getElementById('modalShell');
+            
+            try {
+                // 수리 현황 모달 로드
+                const repairStatusResponse = await fetch('/repair-status-modal.html');
+                const repairStatusHtml = await repairStatusResponse.text();
+                
+                // 수리 상세 모달 로드
+                const repairDetailResponse = await fetch('/repair-detail-modal.html');
+                const repairDetailHtml = await repairDetailResponse.text();
+                
+                // 두 모달을 컨테이너에 추가
+                modalContainer.innerHTML = repairStatusHtml + repairDetailHtml;
+            } catch (error) {
+                console.error('모달 로드 오류:', error);
             }
-        });
+        }
+        
+        // 페이지 로드 시 모달 로드
+        document.addEventListener('DOMContentLoaded', loadModals);
     </script>
+    
+    <script src="/products/category-manager.js"></script>
     <script src="/script.js"></script>
 </body>
 </html>

@@ -179,6 +179,57 @@ router.post('/api/repairs', getRequireAuth(), (req, res) => {
                 laborStmt.finalize();
             }
             
+            // 수리 비용을 Transactions 테이블에 저장 (수리 비용이 있고 상태가 '완료'인 경우)
+            if (status === '완료' && totalCost && totalCost > 0) {
+                const repairCode = `R${repairId}`;
+                
+                // 부품 비용 기록
+                if (parts && parts.length > 0) {
+                    const insertPartTransaction = db.prepare(`
+                        INSERT INTO transactions (transaction_date, transaction_type, reference_type, reference_id, customer_id, product_id, amount, description) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    `);
+                    
+                    parts.forEach(part => {
+                        insertPartTransaction.run([
+                            repairDate,
+                            'REPAIR_PART',
+                            'repair',
+                            repairCode,
+                            customerId,
+                            part.productId || null,
+                            part.totalPrice,
+                            `${part.name} - 수리 부품`
+                        ]);
+                    });
+                    
+                    insertPartTransaction.finalize();
+                }
+                
+                // 인건비 기록
+                if (labor && labor.length > 0) {
+                    const insertLaborTransaction = db.prepare(`
+                        INSERT INTO transactions (transaction_date, transaction_type, reference_type, reference_id, customer_id, product_id, amount, description) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    `);
+                    
+                    labor.forEach(lab => {
+                        insertLaborTransaction.run([
+                            repairDate,
+                            'REPAIR_LABOR',
+                            'repair',
+                            repairCode,
+                            customerId,
+                            null,
+                            lab.totalCost,
+                            `${lab.description} - 수리 인건비`
+                        ]);
+                    });
+                    
+                    insertLaborTransaction.finalize();
+                }
+            }
+            
             res.json({ 
                 success: true, 
                 message: '수리 이력이 성공적으로 등록되었습니다.',

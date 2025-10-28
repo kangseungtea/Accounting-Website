@@ -36,55 +36,36 @@ router.get('/api/summary-details/:type', (req, res, next) => {
     
     switch (type) {
         case 'revenue':
-            // 판매/반품 데이터와 완료된 수리 데이터를 UNION으로 결합
+            // Transactions 테이블에서 매출 데이터 조회
             query = `
                 SELECT 
-                    p.purchase_date as date,
-                    p.purchase_code as code,
-                    c.id as customerId,
+                    t.transaction_date as date,
+                    CASE 
+                        WHEN t.transaction_type = 'SALE' THEN 'P' || CAST(t.reference_id AS TEXT)
+                        WHEN t.transaction_type IN ('REPAIR_LABOR', 'REPAIR_PART') THEN 'R' || CAST(t.reference_id AS TEXT)
+ס                        ELSE 'T' || CAST(t.id AS TEXT)
+                    END as code,
+                    t.customer_id as customerId,
                     c.name as customer,
-                    pr.name as product,
-                    pi.quantity,
-                    pi.unit_price as unitPrice,
-                    pi.total_price as totalAmount,
-                    p.type as status,
-                    p.original_type,
-                    p.original_purchase_id,
-                    p.payment_method as paymentMethod,
-                    p.tax_option,
-                    'purchase' as source_type
-                FROM purchases p
-                LEFT JOIN customers c ON p.customer_id = c.id
-                LEFT JOIN purchase_items pi ON p.id = pi.purchase_id
-                LEFT JOIN products pr ON pi.product_id = pr.id
-                WHERE p.purchase_date BETWEEN ? AND ?
-                AND (p.type = '판매' OR (p.type = '반품' AND p.original_type = '판매'))
-                
-                UNION ALL
-                
-                SELECT 
-                    r.repair_date as date,
-                    'R' || r.id as code,
-                    c.id as customerId,
-                    c.name as customer,
-                    COALESCE(r.device_model, r.device_type, '수리') as product,
+                    COALESCE(pr.name, t.description) as product,
                     1 as quantity,
-                    r.total_cost as unitPrice,
-                    r.total_cost as totalAmount,
-                    '수리완료' as status,
+                    t.amount as unitPrice,
+                    t.amount as totalAmount,
+                    '완료' as status,
                     NULL as original_type,
                     NULL as original_purchase_id,
                     '현금' as paymentMethod,
-                    COALESCE(r.vat_option, 'included') as tax_option,
-                    'repair' as source_type
-                FROM repairs r
-                LEFT JOIN customers c ON r.customer_id = c.id
-                WHERE r.repair_date BETWEEN ? AND ?
-                AND r.status = '완료'
-                
-                ORDER BY date DESC
+                    'included' as tax_option,
+                    t.transaction_type as source_type
+                FROM transactions t
+                LEFT JOIN customers c ON t.customer_id = c.id
+                LEFT JOIN products pr ON t.product_id = pr.id
+                WHERE t.transaction_date BETWEEN ? AND ?
+                AND t.transaction_type IN ('SALE', 'REPAIR_LABOR', 'REPAIR_PART')
+                AND t.amount > 0
+                ORDER BY t.transaction_date DESC
             `;
-            params = [startDate, endDate, startDate, endDate];
+            params = [startDate, endDate];
             break;
             
         case 'expense':
@@ -92,6 +73,7 @@ router.get('/api/summary-details/:type', (req, res, next) => {
                 SELECT 
                     p.purchase_date as date,
                     p.purchase_code as code,
+                    p.customer_id as customerId,
                     c.name as customer,
                     pr.name as product,
                     pi.quantity,
