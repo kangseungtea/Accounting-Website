@@ -1235,7 +1235,7 @@ app.get('/api/repairs', requireAuth, (req, res) => {
     const offset = (page - 1) * limit;
     
     let query = `
-        SELECT r.*, c.name as customer_name, c.management_number
+        SELECT r.*, c.name as customer_name, c.management_number, c.phone as customer_phone, c.address as customer_address
         FROM repairs r
         JOIN customers c ON r.customer_id = c.id
         WHERE 1=1
@@ -1380,7 +1380,7 @@ app.get('/api/repairs/:id', requireAuth, (req, res) => {
     console.log(`수리 이력 상세 조회 요청, ID: ${id}`);
     
     const query = `
-        SELECT r.*, c.management_number 
+        SELECT r.*, c.management_number, c.name as customer_name, c.phone as customer_phone, c.address as customer_address
         FROM repairs r 
         LEFT JOIN customers c ON r.customer_id = c.id 
         WHERE r.id = ?
@@ -1394,6 +1394,11 @@ app.get('/api/repairs/:id', requireAuth, (req, res) => {
         } else {
             console.log('수리 이력 기본 정보:', row);
             console.log('🔢 management_number 값:', row.management_number);
+            console.log('👤 고객 정보:', {
+                customer_name: row.customer_name,
+                customer_phone: row.customer_phone,
+                customer_address: row.customer_address
+            });
             
             // 수리 부품과 인건비 정보도 함께 조회
             const partsQuery = `

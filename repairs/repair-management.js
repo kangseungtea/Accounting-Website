@@ -1094,9 +1094,325 @@ window.showRepairDetailModal = showRepairDetailModal;
 window.editRepair = editRepair;
 window.deleteRepair = deleteRepair;
 window.showMessage = showMessage;
+window.viewRepairDetail = viewRepairDetail;
+window.closeRepairDetailModal = closeRepairDetailModal;
+window.goBack = goBack;
+window.printRepairDetail = printRepairDetail;
+
+// URL 파라미터에서 수리 ID 가져오기
+function getRepairIdFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('id');
+}
+
+// 특정 수리 ID로 상세보기
+async function viewRepairDetail(repairId) {
+    console.log('🔍 수리 상세보기, repairId:', repairId);
+    
+    try {
+        const response = await fetch(`/api/repairs/${repairId}`, {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error('수리 이력을 불러올 수 없습니다.');
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const repair = result.data;
+            showRepairDetailModal(repair);
+        } else {
+            showMessage('수리 이력을 불러오는데 실패했습니다: ' + result.message, 'error');
+        }
+    } catch (error) {
+        console.error('수리 이력 상세 조회 오류:', error);
+        showMessage('수리 이력을 불러오는 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 수리 상세 모달 표시
+function showRepairDetailModal(repair) {
+    console.log('📋 수리 상세 모달 표시 시작:', repair);
+    
+    // 모달 요소 확인
+    const modal = document.getElementById('repairDetailModal');
+    console.log('🔍 모달 요소:', modal);
+    
+    if (!modal) {
+        console.error('❌ repairDetailModal 요소를 찾을 수 없습니다!');
+        return;
+    }
+    
+    // HTML 모달의 요소들에 데이터 설정
+    const repairDateElement = document.getElementById('detailRepairDate');
+    const managementNumberElement = document.getElementById('detailManagementNumber');
+    const customerNameElement = document.getElementById('detailCustomerName');
+    const customerPhoneElement = document.getElementById('detailCustomerPhone');
+    const customerAddressElement = document.getElementById('detailCustomerAddress');
+    const deviceModelElement = document.getElementById('detailDeviceModel');
+    const problemElement = document.getElementById('detailProblem');
+    const solutionElement = document.getElementById('detailSolution');
+    
+    console.log('🔍 모달 요소들:', {
+        repairDateElement,
+        managementNumberElement,
+        customerNameElement,
+        customerPhoneElement,
+        customerAddressElement,
+        deviceModelElement,
+        problemElement,
+        solutionElement
+    });
+    
+    if (repairDateElement) repairDateElement.textContent = repair.repair_date ? new Date(repair.repair_date).toLocaleDateString('ko-KR') : '-';
+    if (managementNumberElement) managementNumberElement.textContent = repair.management_number || '-';
+    
+    // 고객 정보 설정
+    console.log('👤 고객 정보 설정:', {
+        customer_name: repair.customer_name,
+        customer_phone: repair.customer_phone,
+        customer_address: repair.customer_address
+    });
+    
+    if (customerNameElement) customerNameElement.textContent = repair.customer_name || '-';
+    if (customerPhoneElement) customerPhoneElement.textContent = repair.customer_phone || '-';
+    if (customerAddressElement) customerAddressElement.textContent = repair.customer_address || '-';
+    
+    if (deviceModelElement) deviceModelElement.textContent = repair.device_model || '-';
+    if (problemElement) problemElement.textContent = repair.problem || '-';
+    if (solutionElement) solutionElement.textContent = repair.solution || '-';
+    
+    // 부품 목록 설정
+    if (repair.parts && Array.isArray(repair.parts) && repair.parts.length > 0) {
+        const partsHtml = repair.parts.map(part => {
+            if (typeof part === 'object' && part !== null) {
+                return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                    <strong>${part.name || '부품명 없음'}</strong> - ${part.quantity || 1}개 × ${(part.unit_price || 0).toLocaleString('ko-KR')}원 = ${(part.total_price || 0).toLocaleString('ko-KR')}원
+                </div>`;
+            } else {
+                return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">${part}</div>`;
+            }
+        }).join('');
+        document.getElementById('detailParts').innerHTML = partsHtml;
+    } else {
+        document.getElementById('detailParts').innerHTML = '<div style="padding: 8px 0; color: #666; font-style: italic;">사용된 부품이 없습니다.</div>';
+    }
+    
+    // 인건비 설정
+    if (repair.labor && Array.isArray(repair.labor) && repair.labor.length > 0) {
+        const laborHtml = repair.labor.map(l => {
+            if (typeof l === 'object' && l !== null) {
+                return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                    ${l.description || '인건비'} - ${(l.amount || 0).toLocaleString('ko-KR')}원
+                </div>`;
+            } else {
+                return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">${l}</div>`;
+            }
+        }).join('');
+        document.getElementById('detailLabor').innerHTML = laborHtml;
+    } else {
+        document.getElementById('detailLabor').innerHTML = '<div style="padding: 8px 0; color: #666; font-style: italic;">인건비 내역이 없습니다.</div>';
+    }
+    
+    // 총 비용 설정
+    document.getElementById('detailTotalCost').textContent = repair.total_cost ? repair.total_cost.toLocaleString('ko-KR') + '원' : '-';
+    
+    // 모달 표시
+    console.log('🎯 모달 표시 시도...');
+    const modalElement = document.getElementById('repairDetailModal');
+    if (modalElement) {
+        // 여러 방법으로 모달 표시 시도
+        modalElement.style.display = 'flex';
+        modalElement.style.visibility = 'visible';
+        modalElement.style.opacity = '1';
+        modalElement.classList.add('show');
+        
+        console.log('✅ 모달 표시 완료:', {
+            display: modalElement.style.display,
+            visibility: modalElement.style.visibility,
+            opacity: modalElement.style.opacity,
+            classList: modalElement.classList.toString()
+        });
+        
+        // 모달이 실제로 보이는지 확인
+        setTimeout(() => {
+            const rect = modalElement.getBoundingClientRect();
+            console.log('📏 모달 위치 및 크기:', {
+                top: rect.top,
+                left: rect.left,
+                width: rect.width,
+                height: rect.height,
+                visible: rect.width > 0 && rect.height > 0
+            });
+        }, 100);
+    } else {
+        console.error('❌ 모달 요소를 찾을 수 없어서 표시할 수 없습니다!');
+    }
+}
+
+// 수리 상세 모달 닫기
+function closeRepairDetailModal() {
+    document.getElementById('repairDetailModal').style.display = 'none';
+}
+
+// 뒤로가기
+function goBack() {
+    window.history.back();
+}
+
+// 수리 상세 프린트
+function printRepairDetail() {
+    console.log('🖨️ 프린트 함수 시작');
+    
+    const repairDetailModal = document.getElementById('repairDetailModal');
+    if (!repairDetailModal) {
+        console.error('수리 이력 상세 모달을 찾을 수 없습니다.');
+        alert('수리 이력 상세 모달을 찾을 수 없습니다. 먼저 수리 이력을 선택해주세요.');
+        return;
+    }
+    
+    console.log('✅ 수리 이력 상세 모달 찾음');
+    
+    // 새로운 프린트 유틸리티 사용
+    if (typeof window.extractRepairDataFromModal === 'function' && typeof window.printRepairDetailUtils === 'function') {
+        const repairData = window.extractRepairDataFromModal(repairDetailModal);
+        // print-utils.js의 함수를 별칭으로 호출 (무한 재귀 방지)
+        try {
+            window.printRepairDetailUtils(repairData);
+            return;
+        } catch (error) {
+            console.warn('⚠️ print-utils.js 함수 호출 실패:', error);
+        }
+    }
+    
+    // 기존 방식 (fallback)
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    
+    if (!printWindow) {
+        console.error('팝업 창이 차단되었습니다.');
+        alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
+        return;
+    }
+    
+    // 프린트용 HTML 생성 (안전한 요소 접근)
+    const repairDate = document.getElementById('detailRepairDate')?.textContent || '-';
+    const managementNumber = document.getElementById('detailManagementNumber')?.textContent || '-';
+    const customerName = document.getElementById('detailCustomerName')?.textContent || '-';
+    const customerPhone = document.getElementById('detailCustomerPhone')?.textContent || '-';
+    const customerAddress = document.getElementById('detailCustomerAddress')?.textContent || '-';
+    const deviceModel = document.getElementById('detailDeviceModel')?.textContent || '-';
+    const problem = document.getElementById('detailProblem')?.textContent || '-';
+    const solution = document.getElementById('detailSolution')?.textContent || '-';
+    const totalCost = document.getElementById('detailTotalCost')?.textContent || '-';
+    
+    const printHTML = `
+        <!DOCTYPE html>
+        <html lang="ko">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>수리 이력 상세</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+                .section { margin-bottom: 20px; }
+                .section h3 { background: #f0f0f0; padding: 10px; margin: 0 0 10px 0; }
+                .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+                .detail-item { margin-bottom: 10px; }
+                .detail-item label { font-weight: bold; display: block; margin-bottom: 5px; }
+                .detail-item span { display: block; padding: 5px; background: #f9f9f9; border: 1px solid #ddd; }
+                .cost-details { background: #f8f9fa; padding: 15px; border-radius: 5px; }
+                .cost-item { display: flex; justify-content: space-between; margin-bottom: 10px; }
+                .cost-item:last-child { margin-bottom: 0; font-weight: bold; border-top: 1px solid #ccc; padding-top: 10px; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>수리 이력 상세</h1>
+                <p>출력일: ${new Date().toLocaleDateString('ko-KR')}</p>
+            </div>
+            
+            <div class="section">
+                <h3>📋 기본 정보</h3>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <label>📅 수리일</label>
+                        <span>${repairDate}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>🔢 관리번호</label>
+                        <span>${managementNumber}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>👤 고객이름</label>
+                        <span>${customerName}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>📞 전화번호</label>
+                        <span>${customerPhone}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>🏠 주소</label>
+                        <span>${customerAddress}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>💻 모델</label>
+                        <span>${deviceModel}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>⚠️ 문제</label>
+                        <span>${problem}</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>🔧 해결방법</label>
+                        <span>${solution}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>💰 비용 내역</h3>
+                <div class="cost-details">
+                    <div class="cost-item">
+                        <span>💎 총 비용</span>
+                        <span>${totalCost}</span>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    printWindow.document.write(printHTML);
+    printWindow.document.close();
+    
+    // 프린트 창이 로드된 후 프린트 실행
+    printWindow.onload = function() {
+        printWindow.print();
+    };
+    
+    console.log('✅ 프린트 창 생성 완료');
+}
 
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', function() {
-    addRepairSearchAndFilter();
-    addRepairStatistics();
+    console.log('🚀 DOMContentLoaded 이벤트 발생');
+    
+    const repairId = getRepairIdFromUrl();
+    console.log('🔍 URL에서 추출한 수리 ID:', repairId);
+    
+    if (repairId) {
+        // 특정 수리 ID가 있으면 해당 수리 상세보기
+        console.log('🔍 URL에서 수리 ID 발견, viewRepairDetail 호출:', repairId);
+        setTimeout(() => {
+            viewRepairDetail(repairId);
+        }, 100); // DOM이 완전히 로드된 후 실행
+    } else {
+        // 수리 ID가 없으면 전체 목록 표시
+        console.log('📋 수리 ID가 없어서 전체 목록 표시');
+        addRepairSearchAndFilter();
+        addRepairStatistics();
+    }
 });

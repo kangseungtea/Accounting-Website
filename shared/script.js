@@ -47,6 +47,11 @@ function showDashboard() {
     document.getElementById('navMenu').style.display = 'flex';
     document.getElementById('userInfo').style.display = 'flex';
     loadDashboardAnalysis();
+    
+    // 진행중인 수리 내역 표시
+    showAllRepairs();
+    
+    // 접수/위탁 요약 업데이트
 }
 
 // 대시보드 분석 데이터 로드
@@ -58,6 +63,7 @@ async function loadDashboardAnalysis() {
             loadPurchasesData()
         ]);
         updateAnalysis();
+        updateRepairStatus();
     } catch (error) {
         console.error('대시보드 분석 데이터 로드 오류:', error);
     }
@@ -424,9 +430,331 @@ function refreshAnalysis() {
     loadDashboardAnalysis();
 }
 
+// 수리 현황 업데이트
+function updateRepairStatus() {
+    console.log('수리 현황 업데이트 시작');
+    
+    let pendingCount = 0;
+    let inProgressCount = 0;
+    let completedCount = 0;
+    let warrantyCount = 0;
+    
+    allRepairs.forEach(repair => {
+        const status = repair.status || 'pending';
+        const repairDate = new Date(repair.repair_date);
+        const now = new Date();
+        const daysDiff = Math.floor((now - repairDate) / (1000 * 60 * 60 * 24));
+        
+        switch (status) {
+            case 'pending':
+            case '접수':
+                pendingCount++;
+                break;
+            case 'in_progress':
+            case '진행중':
+            case '수리중':
+            case '위탁접수':
+                inProgressCount++;
+                break;
+            case 'completed':
+            case '완료':
+                completedCount++;
+                // 보증 기간 확인 (30일 기준)
+                if (daysDiff <= 30) {
+                    warrantyCount++;
+                }
+                break;
+        }
+    });
+    
+    document.getElementById('pendingCount').textContent = pendingCount + '건';
+    document.getElementById('inProgressCount').textContent = inProgressCount + '건';
+    document.getElementById('completedCount').textContent = completedCount + '건';
+    document.getElementById('warrantyCount').textContent = warrantyCount + '건';
+    
+    console.log('수리 현황 업데이트 완료:', { pendingCount, inProgressCount, completedCount, warrantyCount });
+}
+
+// 진행중인 수리 내역 표시
+function showAllRepairs() {
+    console.log('전체 수리 내역 표시');
+    console.log('전체 수리 데이터:', allRepairs);
+    
+    const searchResults = document.getElementById('regionSearchResults');
+    
+    // 모든 수리 데이터의 상태 값 확인
+    const statusCounts = {};
+    allRepairs.forEach(repair => {
+        const status = repair.status || 'null';
+        statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+    console.log('상태별 수리 건수:', statusCounts);
+    
+    // 접수 및 위탁 접수 상태의 수리만 표시
+    const repairList = allRepairs.filter(repair => {
+        const status = repair.status || 'pending';
+        // 접수, 위탁접수, 진행중 상태만 표시
+        return status === 'pending' || status === '접수' || 
+               status === 'in_progress' || status === '진행중' || status === '수리중' || 
+               status === '위탁접수';
+    });
+    
+    console.log('필터링된 수리 목록:', repairList);
+    
+    if (repairList.length === 0) {
+        searchResults.innerHTML = '<div class="no-results">진행중인 수리가 없습니다.</div>';
+        return;
+    }
+    
+    // 수리일 순으로 정렬 (최신순)
+    repairList.sort((a, b) => new Date(b.repair_date) - new Date(a.repair_date));
+    
+    let html = '';
+    repairList.forEach(repair => {
+        const repairDate = new Date(repair.repair_date).toLocaleDateString('ko-KR');
+        const statusText = getStatusText(repair.status);
+        const statusClass = getStatusClass(repair.status);
+        
+        console.log('수리 항목 처리:', {
+            id: repair.id,
+            customer_name: repair.customer_name,
+            status: repair.status,
+            statusText: statusText,
+            repair_date: repair.repair_date
+        });
+        
+        html += `
+            <div class="search-result-item compact">
+                <div class="result-info">
+                    <div class="result-customer">${repair.customer_name || '고객명 없음'}</div>
+                    <div class="result-details">
+                        📞 ${repair.customer_phone || '-'} | 📍 ${repair.customer_address || '주소 없음'} | 
+                        📅 ${repairDate}
+                    </div>
+                </div>
+                <div class="result-actions">
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                    <button class="result-btn primary" onclick="viewRepairDetail(${repair.id})">상세</button>
+                    <button class="result-btn secondary" onclick="callCustomer('${repair.customer_phone}')">전화</button>
+                </div>
+            </div>
+        `;
+    });
+    
+    searchResults.innerHTML = html;
+    console.log('진행중인 수리 내역 표시 완료:', repairList.length, '건');
+}
+
+// 지역별 검색 기능
+function searchByRegion() {
+    console.log('지역별 검색 시작');
+    
+    const searchTerm = document.getElementById('regionSearchInput').value.trim().toLowerCase();
+    const searchResults = document.getElementById('regionSearchResults');
+    
+    if (searchTerm.length < 2) {
+        // 검색어가 2글자 미만이면 진행중인 수리 내역 표시
+        showAllRepairs();
+        return;
+    }
+    
+    // 고객 데이터에서 지역별 검색
+    const matchingCustomers = [];
+    const customerMap = new Map();
+    
+    allRepairs.forEach(repair => {
+        if (repair.customer_name) {
+            const customerName = repair.customer_name.toLowerCase();
+            const customerAddress = (repair.customer_address || '').toLowerCase();
+            const extractedRegion = extractRegionFromCustomer(repair.customer_name).toLowerCase();
+            
+            // 디버깅을 위한 로그
+            console.log('검색 대상:', {
+                customerName: repair.customer_name,
+                customerAddress: repair.customer_address,
+                extractedRegion: extractedRegion,
+                searchTerm: searchTerm
+            });
+            
+            // 고객명, 주소, 또는 추출된 지역에서 검색어 포함 확인
+            if (customerName.includes(searchTerm) || 
+                customerAddress.includes(searchTerm) || 
+                extractedRegion.includes(searchTerm)) {
+                const customerId = repair.customer_id;
+                
+                if (!customerMap.has(customerId)) {
+                    customerMap.set(customerId, {
+                        id: customerId,
+                        name: repair.customer_name,
+                        phone: repair.customer_phone || '-',
+                        address: repair.customer_address || '-',
+                        management_number: repair.management_number || '-',
+                        region: extractRegionFromCustomer(repair.customer_name) || '기타',
+                        repairCount: 0,
+                        totalAmount: 0,
+                        lastRepairDate: repair.repair_date
+                    });
+                }
+                
+                const customer = customerMap.get(customerId);
+                customer.repairCount++;
+                customer.totalAmount += parseFloat(repair.total_cost) || 0;
+                
+                // 최신 수리일 업데이트
+                if (new Date(repair.repair_date) > new Date(customer.lastRepairDate)) {
+                    customer.lastRepairDate = repair.repair_date;
+                }
+            }
+        }
+    });
+    
+    matchingCustomers.push(...customerMap.values());
+    
+    // 검색 결과 표시
+    if (matchingCustomers.length === 0) {
+        searchResults.innerHTML = '<div class="no-results">검색 결과가 없습니다.</div>';
+        return;
+    }
+    
+    // 수리 건수 순으로 정렬
+    matchingCustomers.sort((a, b) => b.repairCount - a.repairCount);
+    
+    let html = '';
+    matchingCustomers.forEach(customer => {
+        const lastRepairDate = new Date(customer.lastRepairDate).toLocaleDateString('ko-KR');
+        
+        html += `
+            <div class="search-result-item compact">
+                <div class="result-info">
+                    <div class="result-customer">${customer.name}</div>
+                    <div class="result-details">
+                        📞 ${customer.phone} | 📍 ${customer.address} | 
+                        🔧 ${customer.repairCount}건
+                    </div>
+                </div>
+                <div class="result-actions">
+                    <button class="result-btn primary" onclick="viewCustomerDetail(${customer.id})">상세</button>
+                    <button class="result-btn secondary" onclick="callCustomer('${customer.phone}')">전화</button>
+                </div>
+            </div>
+        `;
+    });
+    
+    searchResults.innerHTML = html;
+    console.log('지역별 검색 완료:', matchingCustomers.length, '명의 고객 발견');
+}
+
+// 지역별 검색 초기화
+function clearRegionSearch() {
+    document.getElementById('regionSearchInput').value = '';
+    document.getElementById('regionSearchResults').innerHTML = '<div class="loading">지역별 검색을 시작하세요...</div>';
+}
+
+// 고객 상세보기
+function viewCustomerDetail(customerId) {
+    window.open(`customers/customer-detail.html?id=${customerId}`, '_blank');
+}
+
+// 전화걸기
+function callCustomer(phone) {
+    if (phone && phone !== '-') {
+        window.open(`tel:${phone}`, '_self');
+    } else {
+        alert('전화번호가 없습니다.');
+    }
+}
+
+// 수리 상세보기
+function viewRepairDetail(repairId) {
+    console.log('🔍 수리 상세보기 이동, repairId:', repairId);
+    // 수리 관리 페이지로 이동
+    window.open(`/repairs/repair-management.html?id=${repairId}`, '_blank');
+}
+
+// 상태 텍스트 반환
+function getStatusText(status) {
+    const statusMap = {
+        'pending': '접수',
+        '접수': '접수',
+        '위탁접수': '위탁 접수',
+        'in_progress': '위탁 접수',
+        '진행중': '위탁 접수',
+        '수리중': '위탁 접수',
+        'completed': '수리 완료',
+        '완료': '수리 완료',
+        'cancelled': '취소됨',
+        '취소': '취소됨'
+    };
+    return statusMap[status] || status || '알 수 없음';
+}
+
+// 상태 클래스 반환
+function getStatusClass(status) {
+    const classMap = {
+        'pending': 'status-pending',
+        '접수': 'status-pending',
+        '위탁접수': 'status-progress',
+        'in_progress': 'status-progress',
+        '진행중': 'status-progress',
+        '수리중': 'status-progress',
+        'completed': 'status-completed',
+        '완료': 'status-completed',
+        'cancelled': 'status-cancelled',
+        '취소': 'status-cancelled'
+    };
+    return classMap[status] || 'status-unknown';
+}
+
+// 고객명에서 지역 추출 (간단한 예시)
+function extractRegionFromCustomer(customerName) {
+    // 실제로는 주소 데이터를 사용해야 함
+    const regionKeywords = [
+        // 시/도
+        '서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주',
+        // 서울 구/군
+        '강남구', '강동구', '강북구', '강서구', '관악구', '광진구', '구로구', '금천구', '노원구', '도봉구', '동대문구', '동작구', '마포구', '서대문구', '서초구', '성동구', '성북구', '송파구', '양천구', '영등포구', '용산구', '은평구', '종로구', '중구', '중랑구',
+        // 서울 구/군 (구 없이)
+        '강남', '강동', '강북', '강서', '관악', '광진', '구로', '금천', '노원', '도봉', '동대문', '동작', '마포', '서대문', '서초', '성동', '성북', '송파', '양천', '영등포', '용산', '은평', '종로', '중구', '중랑',
+        // 경기도 주요 지역
+        '수원', '성남', '의정부', '안양', '부천', '광명', '평택', '과천', '오산', '시흥', '군포', '의왕', '하남', '용인', '파주', '이천', '안성', '김포', '화성', '광주', '여주', '양평', '동두천', '가평', '연천'
+    ];
+    
+    for (const keyword of regionKeywords) {
+        if (customerName.includes(keyword)) {
+            return keyword;
+        }
+    }
+    
+    return '기타';
+}
+
+
+// 수리 현황 새로고침
+function refreshRepairStatus() {
+    console.log('수리 현황 새로고침');
+    loadRepairsData().then(() => {
+        updateRepairStatus();
+    });
+}
+
+// 지역별 검색 새로고침
+function refreshRegionSearch() {
+    console.log('지역별 검색 새로고침');
+    searchByRegion();
+}
+
+
 // 전역 함수로 등록
 window.updateAnalysis = updateAnalysis;
 window.refreshAnalysis = refreshAnalysis;
+window.refreshRepairStatus = refreshRepairStatus;
+window.showAllRepairs = showAllRepairs;
+window.searchByRegion = searchByRegion;
+window.clearRegionSearch = clearRegionSearch;
+window.viewCustomerDetail = viewCustomerDetail;
+window.viewRepairDetail = viewRepairDetail;
+window.callCustomer = callCustomer;
+window.refreshRegionSearch = refreshRegionSearch;
 
 // 모든 화면 숨기기
 function hideAllScreens() {

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>수리 내역</title>
+    <!-- CSS는 JavaScript에서 동적으로 로드됩니다 -->
+</head>
+<body>
+    <div class="print-header">
+        <div class="print-title">수리 내역</div>
+    </div>
+    
+    <div class="print-section">
+        <div class="print-section-title">기본 정보</div>
+        <div class="print-info-grid-4">
+            <div class="print-info-item">
+                <div class="print-info-label">수리일</div>
+                <div class="print-info-value" id="printRepairDate">-</div>
+            </div>
+            <div class="print-info-item">
+                <div class="print-info-label">고객이름</div>
+                <div class="print-info-value" id="printCustomerName">-</div>
+            </div>
+            <div class="print-info-item">
+                <div class="print-info-label">전화번호</div>
+                <div class="print-info-value" id="printCustomerPhone">-</div>
+            </div>
+            <div class="print-info-item">
+                <div class="print-info-label">관리번호</div>
+                <div class="print-info-value" id="printManagementNumber">-</div>
+            </div>
+        </div>
+        <div class="print-info-item">
+            <div class="print-info-label">주소</div>
+            <div class="print-info-value" id="printCustomerAddress">-</div>
+        </div>
+    </div>
+    
+    <div class="print-section">
+        <div class="print-section-title">장비 정보</div>
+        <div class="print-description" id="printDeviceModel">-</div>
+    </div>
+    
+    <div class="print-section">
+        <div class="print-section-title">문제 및 해결</div>
+        <div class="print-description">문제: <span id="printProblem">-</span></div>
+        <div class="print-description">해결방법: <span id="printSolution">-</span></div>
+    </div>
+    
+    <div class="print-section">
+        <div class="print-section-title">부품 및 비용</div>
+        <div class="print-description" id="printPartsList">-</div>
+        <div class="print-total" id="printTotalCost">총 비용: -</div>
+    </div>
+    
+    <div class="print-footer">
+        <div>수리센터 관리 시스템</div>
+    </div>
+</body>
+</html>

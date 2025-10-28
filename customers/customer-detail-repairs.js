@@ -254,16 +254,22 @@ function closeAddRepairModal() {
 
 // 수리 이력 상세 보기
 async function viewRepairDetail(repairId) {
+    console.log('🔍 viewRepairDetail 호출됨, repairId:', repairId);
+    
     try {
+        console.log('📡 API 요청 시작:', `/api/repairs/${repairId}`);
         const response = await fetch(`/api/repairs/${repairId}`, {
             credentials: 'include'
         });
         
+        console.log('📡 API 응답 상태:', response.status, response.statusText);
+        
         if (!response.ok) {
-            throw new Error('수리 이력을 불러올 수 없습니다.');
+            throw new Error(`수리 이력을 불러올 수 없습니다. (${response.status})`);
         }
         
         const result = await response.json();
+        console.log('📡 API 응답 데이터:', result);
         
         if (result.success) {
             const repair = result.data;
@@ -282,34 +288,50 @@ async function viewRepairDetail(repairId) {
                 console.error('❌ detailManagementNumber 요소를 찾을 수 없습니다.');
             }
             
-            document.getElementById('detailTechnician').textContent = repair.technician || '-';
-            document.getElementById('detailStatus').textContent = repair.status || '-';
+            // 고객 정보 설정 (API에서 고객 정보를 가져와야 함)
+            console.log('👤 고객 정보 설정:', {
+                customer_name: repair.customer_name,
+                customer_phone: repair.customer_phone,
+                customer_address: repair.customer_address
+            });
+            
+            document.getElementById('detailCustomerName').textContent = repair.customer_name || '-';
+            document.getElementById('detailCustomerPhone').textContent = repair.customer_phone || '-';
+            document.getElementById('detailCustomerAddress').textContent = repair.customer_address || '-';
             document.getElementById('detailDeviceModel').textContent = repair.device_model || '-';
             document.getElementById('detailProblem').textContent = repair.problem || '-';
             document.getElementById('detailSolution').textContent = repair.solution || '-';
             
             // 부품 목록 설정
-            if (repair.parts && repair.parts.length > 0) {
-                const partsHtml = repair.parts.map(part => 
-                    `<div style="padding: 10px; border-bottom: 1px solid #eee;">
-                        <strong>${part.name}</strong> - ${part.quantity}개 × ${part.unit_price.toLocaleString('ko-KR')}원 = ${part.total_price.toLocaleString('ko-KR')}원
-                    </div>`
-                ).join('');
+            if (repair.parts && Array.isArray(repair.parts) && repair.parts.length > 0) {
+                const partsHtml = repair.parts.map(part => {
+                    if (typeof part === 'object' && part !== null) {
+                        return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                            <strong>${part.name || '부품명 없음'}</strong> - ${part.quantity || 1}개 × ${(part.unit_price || 0).toLocaleString('ko-KR')}원 = ${(part.total_price || 0).toLocaleString('ko-KR')}원
+                        </div>`;
+                    } else {
+                        return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">${part}</div>`;
+                    }
+                }).join('');
                 document.getElementById('detailParts').innerHTML = partsHtml;
             } else {
-                document.getElementById('detailParts').textContent = '사용된 부품이 없습니다.';
+                document.getElementById('detailParts').innerHTML = '<div style="padding: 8px 0; color: #666; font-style: italic;">사용된 부품이 없습니다.</div>';
             }
             
             // 인건비 설정
-            if (repair.labor && repair.labor.length > 0) {
-                const laborHtml = repair.labor.map(l => 
-                    `<div style="padding: 10px; border-bottom: 1px solid #eee;">
-                        ${l.description} - ${l.amount.toLocaleString('ko-KR')}원
-                    </div>`
-                ).join('');
+            if (repair.labor && Array.isArray(repair.labor) && repair.labor.length > 0) {
+                const laborHtml = repair.labor.map(l => {
+                    if (typeof l === 'object' && l !== null) {
+                        return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                            ${l.description || '인건비'} - ${(l.amount || 0).toLocaleString('ko-KR')}원
+                        </div>`;
+                    } else {
+                        return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">${l}</div>`;
+                    }
+                }).join('');
                 document.getElementById('detailLabor').innerHTML = laborHtml;
             } else {
-                document.getElementById('detailLabor').textContent = '인건비 내역이 없습니다.';
+                document.getElementById('detailLabor').innerHTML = '<div style="padding: 8px 0; color: #666; font-style: italic;">인건비 내역이 없습니다.</div>';
             }
             
             // 총 비용 설정
@@ -322,8 +344,13 @@ async function viewRepairDetail(repairId) {
             showMessage('수리 이력을 불러오는데 실패했습니다: ' + result.message, 'error');
         }
     } catch (error) {
-        console.error('수리 이력 상세 조회 오류:', error);
-        showMessage('수리 이력을 불러오는 중 오류가 발생했습니다.', 'error');
+        console.error('❌ 수리 이력 상세 조회 오류:', error);
+        console.error('❌ 오류 상세:', {
+            message: error.message,
+            stack: error.stack,
+            repairId: repairId
+        });
+        showMessage(`수리 이력을 불러오는 중 오류가 발생했습니다: ${error.message}`, 'error');
     }
 }
 
@@ -336,6 +363,7 @@ function closeRepairDetailModal() {
 }
 
 // 수리 이력 상세 프린트
+// 수리 이력 상세 프린트 (새로운 방식)
 function printRepairDetail() {
     console.log('🖨️ 프린트 함수 시작');
     
@@ -348,254 +376,11 @@ function printRepairDetail() {
     
     console.log('✅ 수리 이력 상세 모달 찾음');
     
-    // 모달의 내용을 복사하여 프린트용 창을 생성
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    // 모달에서 데이터 추출
+    const repairData = window.extractRepairDataFromModal(repairDetailModal);
     
-    if (!printWindow) {
-        console.error('팝업 창이 차단되었습니다.');
-        alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
-        return;
-    }
-    
-    console.log('✅ 프린트 창 생성 완료');
-    
-    // 프린트용 HTML 생성
-    const printContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>수리 이력 상세</title>
-            <style>
-                body {
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    margin: 20px;
-                    color: #333;
-                    line-height: 1.6;
-                }
-                .print-header {
-                    text-align: center;
-                    border-bottom: 2px solid #007bff;
-                    padding-bottom: 20px;
-                    margin-bottom: 30px;
-                }
-                .print-title {
-                    font-size: 24px;
-                    font-weight: bold;
-                    color: #007bff;
-                    margin-bottom: 10px;
-                }
-                .print-subtitle {
-                    font-size: 16px;
-                    color: #666;
-                }
-                .print-section {
-                    margin-bottom: 25px;
-                    page-break-inside: avoid;
-                }
-                .print-section-title {
-                    font-size: 18px;
-                    font-weight: bold;
-                    color: #007bff;
-                    border-bottom: 1px solid #ddd;
-                    padding-bottom: 8px;
-                    margin-bottom: 15px;
-                }
-                .print-info-grid {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 15px;
-                    margin-bottom: 20px;
-                }
-                .print-info-item {
-                    display: flex;
-                    flex-direction: column;
-                }
-                .print-info-label {
-                    font-weight: bold;
-                    color: #555;
-                    margin-bottom: 5px;
-                    font-size: 14px;
-                }
-                .print-info-value {
-                    color: #333;
-                    font-size: 16px;
-                    padding: 8px;
-                    background: #f8f9fa;
-                    border-radius: 4px;
-                    border: 1px solid #e9ecef;
-                }
-                .print-description {
-                    background: #f8f9fa;
-                    padding: 15px;
-                    border-radius: 6px;
-                    border: 1px solid #e9ecef;
-                    white-space: pre-wrap;
-                    font-size: 14px;
-                    line-height: 1.5;
-                }
-                .print-parts-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-top: 10px;
-                }
-                .print-parts-table th,
-                .print-parts-table td {
-                    border: 1px solid #ddd;
-                    padding: 10px;
-                    text-align: left;
-                }
-                .print-parts-table th {
-                    background: #f8f9fa;
-                    font-weight: bold;
-                }
-                .print-total {
-                    text-align: right;
-                    font-size: 18px;
-                    font-weight: bold;
-                    color: #007bff;
-                    margin-top: 20px;
-                    padding: 15px;
-                    background: #e3f2fd;
-                    border-radius: 6px;
-                }
-                .print-footer {
-                    margin-top: 40px;
-                    text-align: center;
-                    font-size: 12px;
-                    color: #666;
-                    border-top: 1px solid #ddd;
-                    padding-top: 20px;
-                }
-                @media print {
-                    body { margin: 0; }
-                    .print-header { page-break-after: avoid; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="print-header">
-                <div class="print-title">수리 이력 상세</div>
-                <div class="print-subtitle">Repair Detail Report</div>
-            </div>
-            
-            <div class="print-section">
-                <div class="print-section-title">기본 정보</div>
-                <div class="print-info-grid">
-                    <div class="print-info-item">
-                        <div class="print-info-label">수리일</div>
-                        <div class="print-info-value" id="printRepairDate">-</div>
-                    </div>
-                    <div class="print-info-item">
-                        <div class="print-info-label">담당기사</div>
-                        <div class="print-info-value" id="printTechnician">-</div>
-                    </div>
-                    <div class="print-info-item">
-                        <div class="print-info-label">상태</div>
-                        <div class="print-info-value" id="printStatus">-</div>
-                    </div>
-                    <div class="print-info-item">
-                        <div class="print-info-label">관리번호</div>
-                        <div class="print-info-value" id="printManagementNumber">-</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="print-section">
-                <div class="print-section-title">장비 정보</div>
-                <div class="print-info-item">
-                    <div class="print-info-label">장비 모델</div>
-                    <div class="print-description" id="printDeviceModel">-</div>
-                </div>
-            </div>
-            
-            <div class="print-section">
-                <div class="print-section-title">문제 및 해결</div>
-                <div class="print-info-item">
-                    <div class="print-info-label">문제</div>
-                    <div class="print-description" id="printProblem">-</div>
-                </div>
-                <div class="print-info-item">
-                    <div class="print-info-label">해결 방법</div>
-                    <div class="print-description" id="printSolution">-</div>
-                </div>
-            </div>
-            
-            <div class="print-section">
-                <div class="print-section-title">부품 및 비용</div>
-                <div id="printPartsList">-</div>
-                <div class="print-total" id="printTotalCost">총 비용: -</div>
-            </div>
-            
-            <div class="print-footer">
-                <div>출력일: ${new Date().toLocaleString('ko-KR')}</div>
-                <div>수리센터 관리 시스템</div>
-            </div>
-        </body>
-        </html>
-    `;
-    
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    
-    // 모달의 데이터를 프린트 창에 복사
-    setTimeout(() => {
-        console.log('🔄 프린트 데이터 설정 시작');
-        
-        const printDoc = printWindow.document;
-        
-        // 기본 정보 복사
-        const repairDate = document.getElementById('detailRepairDate')?.textContent || '-';
-        const technician = document.getElementById('detailTechnician')?.textContent || '-';
-        const status = document.getElementById('detailStatus')?.textContent || '-';
-        const managementNumber = document.getElementById('detailManagementNumber')?.textContent || '-';
-        const deviceModel = document.getElementById('detailDeviceModel')?.textContent || '-';
-        const problem = document.getElementById('detailProblem')?.textContent || '-';
-        const solution = document.getElementById('detailSolution')?.textContent || '-';
-        const totalCost = document.getElementById('detailTotalCost')?.textContent || '-';
-        
-        console.log('📋 복사된 데이터:', {
-            repairDate, technician, status, managementNumber, 
-            deviceModel, problem, solution, totalCost
-        });
-        
-        // 프린트 창에 데이터 설정
-        try {
-            printDoc.getElementById('printRepairDate').textContent = repairDate;
-            printDoc.getElementById('printTechnician').textContent = technician;
-            printDoc.getElementById('printStatus').textContent = status;
-            printDoc.getElementById('printManagementNumber').textContent = managementNumber;
-            printDoc.getElementById('printDeviceModel').textContent = deviceModel;
-            printDoc.getElementById('printProblem').textContent = problem;
-            printDoc.getElementById('printSolution').textContent = solution;
-            printDoc.getElementById('printTotalCost').textContent = `총 비용: ${totalCost}`;
-            
-            console.log('✅ 기본 정보 설정 완료');
-        } catch (error) {
-            console.error('❌ 기본 정보 설정 오류:', error);
-        }
-        
-        // 부품 목록 복사
-        try {
-            const partsList = document.getElementById('detailParts');
-            if (partsList) {
-                const partsTable = partsList.querySelector('table');
-                if (partsTable) {
-                    printDoc.getElementById('printPartsList').innerHTML = partsTable.outerHTML;
-                    console.log('✅ 부품 목록 설정 완료');
-                } else {
-                    printDoc.getElementById('printPartsList').textContent = '사용된 부품이 없습니다.';
-                    console.log('ℹ️ 부품 목록이 없음');
-                }
-            }
-        } catch (error) {
-            console.error('❌ 부품 목록 설정 오류:', error);
-        }
-        
-        // 프린트 실행
-        console.log('🖨️ 프린트 실행');
-        printWindow.focus();
-        printWindow.print();
-    }, 100);
+    // 프린트 실행
+    window.printRepairDetail(repairData);
 }
 
 // 수리 이력 수정
@@ -797,6 +582,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 1000);
 });
+
+// 전역 함수 등록
+window.viewRepairDetail = viewRepairDetail;
+window.closeRepairDetailModal = closeRepairDetailModal;
+window.printRepairDetail = printRepairDetail;
 
 // 수리 이력 탭 전환 시 통계 업데이트
 function switchToRepairsTab() {

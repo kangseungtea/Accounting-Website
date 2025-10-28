@@ -72,6 +72,68 @@
         <div class="dashboard" id="dashboard" style="display: none;">
             <h1>대시보드</h1>
             
+            <!-- 수리 현황 섹션 -->
+            <div class="repair-status-section">
+                <div class="section-header">
+                    <h2>🔧 수리 현황</h2>
+                    <div class="section-controls">
+                        <button class="btn btn-outline" onclick="refreshRepairStatus()">🔄 새로고침</button>
+                    </div>
+                </div>
+                
+                <!-- 수리 진행 상태 카드들 -->
+                <div class="status-cards">
+                    <div class="status-card pending">
+                        <div class="status-icon">📝</div>
+                        <div class="status-content">
+                            <div class="status-title">접수</div>
+                            <div class="status-value" id="pendingCount">0건</div>
+                        </div>
+                    </div>
+                    
+                    <div class="status-card in-progress">
+                        <div class="status-icon">📦</div>
+                        <div class="status-content">
+                            <div class="status-title">위탁 접수</div>
+                            <div class="status-value" id="inProgressCount">0건</div>
+                        </div>
+                    </div>
+                    
+                    <div class="status-card completed">
+                        <div class="status-icon">✅</div>
+                        <div class="status-content">
+                            <div class="status-title">수리 완료</div>
+                            <div class="status-value" id="completedCount">0건</div>
+                        </div>
+                    </div>
+                    
+                    <div class="status-card warranty">
+                        <div class="status-icon">🛡️</div>
+                        <div class="status-content">
+                            <div class="status-title">보증 중</div>
+                            <div class="status-value" id="warrantyCount">0건</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 진행중인 수리 내역 섹션 -->
+            <div class="region-search-section">
+                <div class="section-header">
+                    <h2>🔧 진행중인 수리 내역</h2>
+                    <div class="section-controls">
+                        <input type="text" id="regionSearchInput" placeholder="지역명 또는 고객명을 입력하세요..." onkeyup="searchByRegion()">
+                        <button class="btn btn-outline" onclick="clearRegionSearch()">초기화</button>
+                        <button class="btn btn-primary" onclick="showAllRepairs()">전체 보기</button>
+                    </div>
+                </div>
+                
+                <div class="search-results" id="regionSearchResults">
+                    <div class="loading">진행중인 수리 내역을 불러오는 중...</div>
+                </div>
+            </div>
+
+
             <!-- 매출/매입 분석 섹션 -->
             <div class="analysis-section">
                 <div class="analysis-header">
