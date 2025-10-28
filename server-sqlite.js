@@ -402,6 +402,446 @@ app.post('/api/purchases', requireAuth, (req, res) => {
     });
 });
 
+// 제품 목록 조회 API
+app.get('/api/products', requireAuth, (req, res) => {
+    const { page = 1, limit = 10, search = '', category = '', status = '' } = req.query;
+    const offset = (page - 1) * limit;
+    
+    let query = 'SELECT * FROM products WHERE 1=1';
+    const params = [];
+    
+    if (search) {
+        query += ` AND (name LIKE ? OR description LIKE ?)`;
+        params.push(`%${search}%`, `%${search}%`);
+    }
+    
+    if (category) {
+        query += ` AND main_category = ?`;
+        params.push(category);
+    }
+    
+    if (status) {
+        query += ` AND status = ?`;
+        params.push(status);
+    }
+    
+    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    params.push(parseInt(limit), parseInt(offset));
+    
+    db.all(query, params, (err, rows) => {
+        if (err) {
+            console.error('제품 조회 오류:', err.message);
+            res.status(500).json({ success: false, message: '제품 목록을 불러오는데 실패했습니다.' });
+        } else {
+            // 전체 개수 조회
+            let countQuery = 'SELECT COUNT(*) as total FROM products WHERE 1=1';
+            const countParams = [];
+            
+            if (search) {
+                countQuery += ` AND (name LIKE ? OR description LIKE ?)`;
+                countParams.push(`%${search}%`, `%${search}%`);
+            }
+            
+            if (category) {
+                countQuery += ` AND main_category = ?`;
+                countParams.push(category);
+            }
+            
+            if (status) {
+                countQuery += ` AND status = ?`;
+                countParams.push(status);
+            }
+            
+            db.get(countQuery, countParams, (err, countRow) => {
+                if (err) {
+                    console.error('제품 수 조회 오류:', err.message);
+                    res.status(500).json({ success: false, message: '데이터를 불러오는데 실패했습니다.' });
+                } else {
+                    const totalPages = Math.ceil(countRow.total / limit);
+                    res.json({
+                        success: true,
+                        data: rows,
+                        pagination: {
+                            currentPage: parseInt(page),
+                            totalPages: totalPages,
+                            totalItems: countRow.total,
+                            itemsPerPage: parseInt(limit)
+                        }
+                    });
+                }
+            });
+        }
+    });
+});
+
+// 제품 상세 조회 API
+app.get('/api/products/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    
+    const query = 'SELECT * FROM products WHERE id = ?';
+    db.get(query, [id], (err, row) => {
+        if (err) {
+            console.error('제품 상세 조회 오류:', err.message);
+            res.status(500).json({ success: false, message: '제품 정보를 불러오는데 실패했습니다.' });
+        } else if (!row) {
+            res.status(404).json({ success: false, message: '제품을 찾을 수 없습니다.' });
+        } else {
+            res.json({ success: true, data: row });
+        }
+    });
+});
+
+// 제품 등록 API
+app.post('/api/products', requireAuth, (req, res) => {
+    const { name, description, price, stockQuantity, mainCategory, subCategory, detailCategory, status } = req.body;
+    
+    if (!name || !price) {
+        return res.status(400).json({ success: false, message: '제품명과 가격은 필수입니다.' });
+    }
+    
+    const query = `
+        INSERT INTO products (name, description, price, stock_quantity, main_category, sub_category, detail_category, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    
+    db.run(query, [name, description, price, stockQuantity, mainCategory, subCategory, detailCategory, status || '활성'], function(err) {
+        if (err) {
+            console.error('제품 등록 오류:', err.message);
+            res.status(500).json({ success: false, message: '제품 등록에 실패했습니다.' });
+        } else {
+            res.json({ success: true, message: '제품이 등록되었습니다.', productId: this.lastID });
+        }
+    });
+});
+
+// 제품 수정 API
+app.put('/api/products/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    const { name, description, price, stockQuantity, mainCategory, subCategory, detailCategory, status } = req.body;
+    
+    if (!name || !price) {
+        return res.status(400).json({ success: false, message: '제품명과 가격은 필수입니다.' });
+    }
+    
+    const query = `
+        UPDATE products 
+        SET name = ?, description = ?, price = ?, stock_quantity = ?, main_category = ?, sub_category = ?, detail_category = ?, status = ?
+        WHERE id = ?
+    `;
+    
+    db.run(query, [name, description, price, stockQuantity, mainCategory, subCategory, detailCategory, status, id], function(err) {
+        if (err) {
+            console.error('제품 수정 오류:', err.message);
+            res.status(500).json({ success: false, message: '제품 수정에 실패했습니다.' });
+        } else if (this.changes === 0) {
+            res.status(404).json({ success: false, message: '제품을 찾을 수 없습니다.' });
+        } else {
+            res.json({ success: true, message: '제품이 수정되었습니다.' });
+        }
+    });
+});
+
+// 제품 삭제 API
+app.delete('/api/products/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    
+    const query = 'DELETE FROM products WHERE id = ?';
+    
+    db.run(query, [id], function(err) {
+        if (err) {
+            console.error('제품 삭제 오류:', err.message);
+            res.status(500).json({ success: false, message: '제품 삭제에 실패했습니다.' });
+        } else if (this.changes === 0) {
+            res.status(404).json({ success: false, message: '제품을 찾을 수 없습니다.' });
+        } else {
+            res.json({ success: true, message: '제품이 삭제되었습니다.' });
+        }
+    });
+});
+
+// 구매 이력 조회 API (고객별)
+app.get('/api/purchases', requireAuth, (req, res) => {
+    const { customerId, page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+    
+    let query = `
+        SELECT p.*, c.name as customer_name
+        FROM purchases p
+        JOIN customers c ON p.customer_id = c.id
+        WHERE 1=1
+    `;
+    const params = [];
+    
+    if (customerId) {
+        query += ` AND p.customer_id = ?`;
+        params.push(customerId);
+    }
+    
+    query += ` ORDER BY p.purchase_date DESC LIMIT ? OFFSET ?`;
+    params.push(parseInt(limit), parseInt(offset));
+    
+    db.all(query, params, (err, rows) => {
+        if (err) {
+            console.error('구매 이력 조회 오류:', err.message);
+            res.status(500).json({ success: false, message: '구매 이력을 불러오는데 실패했습니다.' });
+        } else {
+            // 구매 상품 정보도 함께 조회
+            const purchaseIds = rows.map(row => row.id);
+            if (purchaseIds.length > 0) {
+                const itemQuery = `
+                    SELECT pi.*, p.purchase_code, p.purchase_date, p.type
+                    FROM purchase_items pi
+                    JOIN purchases p ON pi.purchase_id = p.id
+                    WHERE pi.purchase_id IN (${purchaseIds.map(() => '?').join(',')})
+                    ORDER BY p.purchase_date DESC, pi.id
+                `;
+                
+                db.all(itemQuery, purchaseIds, (err, items) => {
+                    if (err) {
+                        console.error('구매 상품 조회 오류:', err.message);
+                        res.status(500).json({ success: false, message: '구매 상품을 불러오는데 실패했습니다.' });
+                    } else {
+                        // 구매 이력에 상품 정보 추가
+                        const purchasesWithItems = rows.map(purchase => ({
+                            ...purchase,
+                            items: items.filter(item => item.purchase_id === purchase.id)
+                        }));
+                        
+                        res.json({ success: true, data: purchasesWithItems });
+                    }
+                });
+            } else {
+                res.json({ success: true, data: rows });
+            }
+        }
+    });
+});
+
+// 수리 이력 조회 API (고객별)
+app.get('/api/repairs', requireAuth, (req, res) => {
+    const { customerId, page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+    
+    let query = `
+        SELECT r.*, c.name as customer_name
+        FROM repairs r
+        JOIN customers c ON r.customer_id = c.id
+        WHERE 1=1
+    `;
+    const params = [];
+    
+    if (customerId) {
+        query += ` AND r.customer_id = ?`;
+        params.push(customerId);
+    }
+    
+    query += ` ORDER BY r.repair_date DESC LIMIT ? OFFSET ?`;
+    params.push(parseInt(limit), parseInt(offset));
+    
+    db.all(query, params, (err, rows) => {
+        if (err) {
+            console.error('수리 이력 조회 오류:', err.message);
+            res.status(500).json({ success: false, message: '수리 이력을 불러오는데 실패했습니다.' });
+        } else {
+            // 수리 부품과 인건비 정보도 함께 조회
+            const repairIds = rows.map(row => row.id);
+            if (repairIds.length > 0) {
+                const partsQuery = `
+                    SELECT rp.*, r.device_model, r.problem
+                    FROM repair_parts rp
+                    JOIN repairs r ON rp.repair_id = r.id
+                    WHERE rp.repair_id IN (${repairIds.map(() => '?').join(',')})
+                    ORDER BY r.repair_date DESC, rp.id
+                `;
+                
+                const laborQuery = `
+                    SELECT rl.*, r.device_model, r.problem
+                    FROM repair_labor rl
+                    JOIN repairs r ON rl.repair_id = r.id
+                    WHERE rl.repair_id IN (${repairIds.map(() => '?').join(',')})
+                    ORDER BY r.repair_date DESC, rl.id
+                `;
+                
+                db.all(partsQuery, repairIds, (err, parts) => {
+                    if (err) {
+                        console.error('수리 부품 조회 오류:', err.message);
+                        res.status(500).json({ success: false, message: '수리 부품을 불러오는데 실패했습니다.' });
+                        return;
+                    }
+                    
+                    db.all(laborQuery, repairIds, (err, labor) => {
+                        if (err) {
+                            console.error('수리 인건비 조회 오류:', err.message);
+                            res.status(500).json({ success: false, message: '수리 인건비를 불러오는데 실패했습니다.' });
+                            return;
+                        }
+                        
+                        // 수리 이력에 부품과 인건비 정보 추가
+                        const repairsWithDetails = rows.map(repair => ({
+                            ...repair,
+                            parts: parts.filter(part => part.repair_id === repair.id),
+                            labor: labor.filter(lab => lab.repair_id === repair.id)
+                        }));
+                        
+                        res.json({ success: true, data: repairsWithDetails });
+                    });
+                });
+            } else {
+                res.json({ success: true, data: rows });
+            }
+        }
+    });
+});
+
+// 구매 이력 삭제 API
+app.delete('/api/purchases/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    
+    // 먼저 구매 이력이 존재하는지 확인
+    const checkQuery = 'SELECT * FROM purchases WHERE id = ?';
+    db.get(checkQuery, [id], (err, purchase) => {
+        if (err) {
+            console.error('구매 이력 확인 오류:', err.message);
+            res.status(500).json({ success: false, message: '구매 이력 확인에 실패했습니다.' });
+        } else if (!purchase) {
+            res.status(404).json({ success: false, message: '구매 이력을 찾을 수 없습니다.' });
+        } else {
+            // 트랜잭션으로 구매 이력과 관련 상품 삭제
+            db.serialize(() => {
+                db.run('BEGIN TRANSACTION');
+                
+                // 구매 상품 삭제
+                db.run('DELETE FROM purchase_items WHERE purchase_id = ?', [id], (err) => {
+                    if (err) {
+                        db.run('ROLLBACK');
+                        console.error('구매 상품 삭제 오류:', err.message);
+                        res.status(500).json({ success: false, message: '구매 상품 삭제에 실패했습니다.' });
+                        return;
+                    }
+                    
+                    // 구매 이력 삭제
+                    db.run('DELETE FROM purchases WHERE id = ?', [id], (err) => {
+                        if (err) {
+                            db.run('ROLLBACK');
+                            console.error('구매 이력 삭제 오류:', err.message);
+                            res.status(500).json({ success: false, message: '구매 이력 삭제에 실패했습니다.' });
+                        } else {
+                            db.run('COMMIT', (err) => {
+                                if (err) {
+                                    console.error('트랜잭션 커밋 오류:', err.message);
+                                    res.status(500).json({ success: false, message: '구매 이력 삭제에 실패했습니다.' });
+                                } else {
+                                    res.json({ success: true, message: '구매 이력이 삭제되었습니다.' });
+                                }
+                            });
+                        }
+                    });
+                });
+            });
+        }
+    });
+});
+
+// 수리 이력 삭제 API
+app.delete('/api/repairs/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    
+    // 먼저 수리 이력이 존재하는지 확인
+    const checkQuery = 'SELECT * FROM repairs WHERE id = ?';
+    db.get(checkQuery, [id], (err, repair) => {
+        if (err) {
+            console.error('수리 이력 확인 오류:', err.message);
+            res.status(500).json({ success: false, message: '수리 이력 확인에 실패했습니다.' });
+        } else if (!repair) {
+            res.status(404).json({ success: false, message: '수리 이력을 찾을 수 없습니다.' });
+        } else {
+            // 트랜잭션으로 수리 이력과 관련 부품/인건비 삭제
+            db.serialize(() => {
+                db.run('BEGIN TRANSACTION');
+                
+                // 수리 부품 삭제
+                db.run('DELETE FROM repair_parts WHERE repair_id = ?', [id], (err) => {
+                    if (err) {
+                        db.run('ROLLBACK');
+                        console.error('수리 부품 삭제 오류:', err.message);
+                        res.status(500).json({ success: false, message: '수리 부품 삭제에 실패했습니다.' });
+                        return;
+                    }
+                    
+                    // 수리 인건비 삭제
+                    db.run('DELETE FROM repair_labor WHERE repair_id = ?', [id], (err) => {
+                        if (err) {
+                            db.run('ROLLBACK');
+                            console.error('수리 인건비 삭제 오류:', err.message);
+                            res.status(500).json({ success: false, message: '수리 인건비 삭제에 실패했습니다.' });
+                            return;
+                        }
+                        
+                        // 수리 이력 삭제
+                        db.run('DELETE FROM repairs WHERE id = ?', [id], (err) => {
+                            if (err) {
+                                db.run('ROLLBACK');
+                                console.error('수리 이력 삭제 오류:', err.message);
+                                res.status(500).json({ success: false, message: '수리 이력 삭제에 실패했습니다.' });
+                            } else {
+                                db.run('COMMIT', (err) => {
+                                    if (err) {
+                                        console.error('트랜잭션 커밋 오류:', err.message);
+                                        res.status(500).json({ success: false, message: '수리 이력 삭제에 실패했습니다.' });
+                                    } else {
+                                        res.json({ success: true, message: '수리 이력이 삭제되었습니다.' });
+                                    }
+                                });
+                            }
+                        });
+                    });
+                });
+            });
+        }
+    });
+});
+
+// 제품 삭제 API
+app.delete('/api/products/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    
+    // 먼저 제품이 존재하는지 확인
+    const checkQuery = 'SELECT * FROM products WHERE id = ?';
+    db.get(checkQuery, [id], (err, product) => {
+        if (err) {
+            console.error('제품 확인 오류:', err.message);
+            res.status(500).json({ success: false, message: '제품 확인에 실패했습니다.' });
+        } else if (!product) {
+            res.status(404).json({ success: false, message: '제품을 찾을 수 없습니다.' });
+        } else {
+            // 제품 삭제
+            const deleteQuery = 'DELETE FROM products WHERE id = ?';
+            db.run(deleteQuery, [id], function(err) {
+                if (err) {
+                    console.error('제품 삭제 오류:', err.message);
+                    res.status(500).json({ success: false, message: '제품 삭제에 실패했습니다.' });
+                } else {
+                    res.json({ success: true, message: '제품이 삭제되었습니다.' });
+                }
+            });
+        }
+    });
+});
+
+// 카테고리 목록 조회 API
+app.get('/api/categories', (req, res) => {
+    const query = 'SELECT * FROM categories ORDER BY main_category, sub_category, detail_category';
+    
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            console.error('카테고리 조회 오류:', err.message);
+            res.status(500).json({ success: false, message: '카테고리 목록을 불러오는데 실패했습니다.' });
+        } else {
+            res.json({ success: true, data: rows });
+        }
+    });
+});
+
 // 서버 시작
 const config = domainConfig.getCurrentConfig();
 const isProduction = process.env.NODE_ENV === 'production';

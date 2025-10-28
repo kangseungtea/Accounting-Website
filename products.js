@@ -10,7 +10,82 @@ window.addEventListener('load', async () => {
     await checkUserStatus();
     await loadCategoryData();
     loadProducts();
+    
+    // 테스트용 제품 추가 버튼 (개발 환경에서만)
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        addTestProductButton();
+    }
 });
+
+// 테스트용 제품 추가 버튼
+function addTestProductButton() {
+    const header = document.querySelector('.page-header');
+    if (header) {
+        const testBtn = document.createElement('button');
+        testBtn.textContent = '테스트 제품 추가';
+        testBtn.style.marginLeft = '10px';
+        testBtn.style.padding = '8px 16px';
+        testBtn.style.backgroundColor = '#4CAF50';
+        testBtn.style.color = 'white';
+        testBtn.style.border = 'none';
+        testBtn.style.borderRadius = '4px';
+        testBtn.style.cursor = 'pointer';
+        testBtn.onclick = addTestProduct;
+        header.appendChild(testBtn);
+    }
+}
+
+// 테스트 제품 추가
+async function addTestProduct() {
+    const testProducts = [
+        {
+            name: '테스트 제품 1',
+            description: '테스트용 제품입니다.',
+            price: 100000,
+            stockQuantity: 10,
+            mainCategory: '컴퓨터부품',
+            subCategory: 'CPU',
+            detailCategory: '인텔',
+            status: '활성'
+        },
+        {
+            name: '테스트 제품 2',
+            description: '테스트용 제품입니다.',
+            price: 50000,
+            stockQuantity: 5,
+            mainCategory: '컴퓨터부품',
+            subCategory: '메모리',
+            detailCategory: 'DDR4',
+            status: '활성'
+        }
+    ];
+    
+    for (const product of testProducts) {
+        try {
+            const response = await fetch('/api/products', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify(product)
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                console.log('테스트 제품 추가 성공:', product.name);
+            } else {
+                console.error('테스트 제품 추가 실패:', result.message);
+            }
+        } catch (error) {
+            console.error('테스트 제품 추가 오류:', error);
+        }
+    }
+    
+    // 제품 목록 새로고침
+    loadProducts();
+    showMessage('테스트 제품이 추가되었습니다.', 'success');
+}
 
 // 사용자 상태 확인
 async function checkUserStatus() {
@@ -33,6 +108,7 @@ async function checkUserStatus() {
 // 제품 목록 로드
 async function loadProducts(page = 1) {
     try {
+        console.log('제품 목록 로드 시작, 페이지:', page);
         const params = new URLSearchParams({
             page: page,
             limit: 10,
@@ -41,16 +117,35 @@ async function loadProducts(page = 1) {
             status: currentStatus
         });
         
+        console.log('API 요청 URL:', `/api/products?${params}`);
         const response = await fetch(`/api/products?${params}`, {
             credentials: 'include'
         });
+        
+        console.log('API 응답 상태:', response.status);
+        console.log('API 응답 Content-Type:', response.headers.get('content-type'));
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('JSON이 아닌 응답:', text.substring(0, 200));
+            throw new Error('서버에서 JSON이 아닌 응답을 반환했습니다.');
+        }
+        
         const result = await response.json();
+        console.log('API 응답 데이터:', result);
         
         if (result.success) {
+            console.log('제품 데이터 개수:', result.data.length);
             displayProducts(result.data);
             displayPagination(result.pagination);
             currentPage = page;
         } else {
+            console.error('API 오류:', result.message);
             showMessage('제품 목록을 불러오는데 실패했습니다.', 'error');
         }
     } catch (error) {
@@ -61,24 +156,47 @@ async function loadProducts(page = 1) {
 
 // 제품 목록 표시
 function displayProducts(products) {
+    console.log('displayProducts 호출됨, 제품 수:', products.length);
     const tbody = document.getElementById('productsTableBody');
+    console.log('tbody 요소:', tbody);
+    
+    if (!tbody) {
+        console.error('productsTableBody 요소를 찾을 수 없습니다!');
+        return;
+    }
+    
     tbody.innerHTML = '';
     
     if (products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #666;">등록된 제품이 없습니다.</td></tr>';
+        console.log('제품 데이터가 없음, 빈 메시지 표시');
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #666;">등록된 제품이 없습니다.</td></tr>';
         return;
     }
     
     products.forEach(product => {
+        console.log('제품 데이터:', product);
         const row = document.createElement('tr');
+        
+        // 안전한 숫자 변환 함수
+        const formatNumber = (value) => {
+            if (value === null || value === undefined || isNaN(value)) {
+                return '0';
+            }
+            return Number(value).toLocaleString('ko-KR');
+        };
+        
+        // 안전한 재고 수량 처리
+        const stockQuantity = product.stock_quantity || product.stockQuantity || 0;
+        const stockClass = stockQuantity === 0 ? 'stock-empty' : 'stock-available';
+        
         row.innerHTML = `
-            <td><span class="product-code">${product.productCode || '-'}</span></td>
-            <td>${product.name}</td>
-            <td>${product.category}</td>
+            <td><span class="product-code">${product.product_code || product.productCode || '-'}</span></td>
+            <td>${product.name || '-'}</td>
+            <td>${product.main_category || product.category || '-'}</td>
             <td>${product.brand || '-'}</td>
-            <td>${product.price.toLocaleString('ko-KR')}원</td>
-            <td class="${product.stockQuantity === 0 ? 'stock-empty' : 'stock-available'}">${product.stockQuantity}개</td>
-            <td><span class="status-badge status-${product.status === '활성' ? 'active' : 'inactive'}">${product.status}</span></td>
+            <td>${formatNumber(product.price)}원</td>
+            <td class="${stockClass}">${stockQuantity}개</td>
+            <td><span class="status-badge status-${product.status === '활성' ? 'active' : 'inactive'}">${product.status || '활성'}</span></td>
             <td>
                 <div class="action-buttons">
                     <button class="action-btn view-btn" onclick="viewProductDetail(${product.id})">상세</button>
@@ -368,15 +486,57 @@ async function deleteProduct(productId) {
 
 // 제품 상세 보기
 async function viewProductDetail(productId) {
+    console.log('제품 상세 조회 시작, ID:', productId);
     try {
         const response = await fetch(`/api/products/${productId}`, {
             credentials: 'include'
         });
+        
+        console.log('제품 상세 API 응답 상태:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('JSON이 아닌 응답:', text.substring(0, 200));
+            throw new Error('서버에서 JSON이 아닌 응답을 반환했습니다.');
+        }
+        
         const result = await response.json();
+        console.log('제품 상세 API 응답:', result);
         
         if (result.success) {
             const product = result.data;
             const detailContent = document.getElementById('productDetailContent');
+            
+            if (!detailContent) {
+                console.error('productDetailContent 요소를 찾을 수 없습니다!');
+                showMessage('제품 상세 모달을 찾을 수 없습니다.', 'error');
+                return;
+            }
+            
+            // 안전한 숫자 변환 함수
+            const formatNumber = (value) => {
+                if (value === null || value === undefined || isNaN(value)) {
+                    return '0';
+                }
+                return Number(value).toLocaleString('ko-KR');
+            };
+            
+            // 안전한 날짜 포맷팅
+            const formatDate = (dateStr) => {
+                if (!dateStr) return '-';
+                try {
+                    return new Date(dateStr).toLocaleDateString('ko-KR');
+                } catch (e) {
+                    return dateStr;
+                }
+            };
+            
+            const stockQuantity = product.stockQuantity || product.stock_quantity || 0;
             
             detailContent.innerHTML = `
                 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px;">
@@ -387,15 +547,15 @@ async function viewProductDetail(productId) {
                         }
                     </div>
                     <div>
-                        <h3 style="margin-top: 0;">${product.name}</h3>
+                        <h3 style="margin-top: 0;">${product.name || '-'}</h3>
                         <div style="display: grid; grid-template-columns: 120px 1fr; gap: 15px; margin-top: 20px;">
-                            <strong>제품코드:</strong><span class="product-code">${product.productCode || '-'}</span>
-                            <strong>카테고리:</strong><span>${product.category}</span>
+                            <strong>제품코드:</strong><span class="product-code">${product.productCode || product.product_code || '-'}</span>
+                            <strong>카테고리:</strong><span>${product.category || product.main_category || '-'}</span>
                             <strong>브랜드:</strong><span>${product.brand || '-'}</span>
-                            <strong>가격:</strong><span style="color: #2196F3; font-size: 1.2em; font-weight: bold;">${product.price.toLocaleString('ko-KR')}원</span>
-                            <strong>재고수량:</strong><span class="${product.stockQuantity === 0 ? 'stock-empty' : 'stock-available'}">${product.stockQuantity}개</span>
-                            <strong>상태:</strong><span><span class="status-badge status-${product.status === '활성' ? 'active' : 'inactive'}">${product.status}</span></span>
-                            <strong>등록일:</strong><span>${new Date(product.registrationDate).toLocaleDateString('ko-KR')}</span>
+                            <strong>가격:</strong><span style="color: #2196F3; font-size: 1.2em; font-weight: bold;">${formatNumber(product.price)}원</span>
+                            <strong>재고수량:</strong><span class="${stockQuantity === 0 ? 'stock-empty' : 'stock-available'}">${stockQuantity}개</span>
+                            <strong>상태:</strong><span><span class="status-badge status-${product.status === '활성' ? 'active' : 'inactive'}">${product.status || '활성'}</span></span>
+                            <strong>등록일:</strong><span>${formatDate(product.registrationDate || product.registration_date)}</span>
                         </div>
                         ${product.description ? `
                             <div style="margin-top: 30px;">
@@ -407,7 +567,14 @@ async function viewProductDetail(productId) {
                 </div>
             `;
             
-            document.getElementById('productDetailModal').style.display = 'flex';
+            const modal = document.getElementById('productDetailModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                console.log('제품 상세 모달 표시됨');
+            } else {
+                console.error('productDetailModal 요소를 찾을 수 없습니다!');
+                showMessage('제품 상세 모달을 찾을 수 없습니다.', 'error');
+            }
         } else {
             showMessage('제품 정보를 불러오는데 실패했습니다.', 'error');
         }

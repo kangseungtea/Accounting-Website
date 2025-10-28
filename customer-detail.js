@@ -86,6 +86,14 @@ function displaySuggestions(suggestions, filteredProducts, input) {
     
     suggestions.style.display = 'block';
     
+    // 안전한 숫자 변환 함수
+    const formatNumber = (value) => {
+        if (value === null || value === undefined || isNaN(value)) {
+            return '0';
+        }
+        return Number(value).toLocaleString('ko-KR');
+    };
+    
     filteredProducts.slice(0, 10).forEach(product => {
         const suggestion = document.createElement('div');
         suggestion.className = 'autocomplete-suggestion';
@@ -93,7 +101,7 @@ function displaySuggestions(suggestions, filteredProducts, input) {
             <div class="product-name">${product.name}</div>
             <div class="product-info">
                 ${product.brand ? `브랜드: ${product.brand}` : ''}
-                <span class="product-price">${product.price.toLocaleString()}원</span>
+                <span class="product-price">${formatNumber(product.price)}원</span>
             </div>
         `;
         
@@ -109,18 +117,42 @@ function displaySuggestions(suggestions, filteredProducts, input) {
 function selectProduct(input, product) {
     input.value = product.name;
     input.dataset.productId = product.id;
-    input.dataset.productPrice = product.price;
+    
+    // 안전한 가격 처리
+    const safePrice = product.price && !isNaN(product.price) ? Number(product.price) : 0;
+    input.dataset.productPrice = safePrice;
     
     // 가격 자동 입력 (사용자가 수정 가능)
     const priceInput = input.closest('.item-row').querySelector('input[name="itemUnitPrice"]');
-    priceInput.value = product.price;
-    priceInput.dataset.originalPrice = product.price; // 원래 가격 저장
+    if (priceInput) {
+        priceInput.value = safePrice;
+        priceInput.dataset.originalPrice = safePrice; // 원래 가격 저장
+    }
     
     // 제안 숨기기
     hideProductSuggestions(input);
     
     // 금액 계산 업데이트
     updateAmountCalculation();
+}
+
+// 제안 목록 표시 (기본 함수)
+function showSuggestions(input) {
+    const suggestions = input.parentElement.querySelector('.autocomplete-suggestions');
+    if (suggestions && input.value.length > 0) {
+        suggestions.style.display = 'block';
+    }
+}
+
+// 제안 목록 숨기기 (기본 함수)
+function hideSuggestions(input) {
+    // 약간의 지연을 두어 클릭 이벤트가 처리되도록 함
+    setTimeout(() => {
+        const suggestions = input.parentElement.querySelector('.autocomplete-suggestions');
+        if (suggestions) {
+            suggestions.style.display = 'none';
+        }
+    }, 200);
 }
 
 // 제품 제안 표시
@@ -395,30 +427,137 @@ async function loadPurchases() {
     }
 }
 
+// 수리 이력 로드
+async function loadRepairs() {
+    try {
+        console.log('수리 이력 로드 시작, 고객 ID:', currentCustomerId);
+        const response = await fetch(`/api/repairs?customerId=${currentCustomerId}`, {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        console.log('수리 이력 API 응답:', result);
+        
+        if (result.success) {
+            displayRepairs(result.data);
+        } else {
+            console.error('수리 이력 로드 실패:', result.message);
+            showMessage('수리 이력을 불러오는데 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('수리 이력 로드 오류:', error);
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 수리 이력 표시
+function displayRepairs(repairs) {
+    console.log('수리 이력 표시 시작, 수리 건수:', repairs.length);
+    const tbody = document.getElementById('repairsTableBody');
+    
+    if (!tbody) {
+        console.error('repairsTableBody 요소를 찾을 수 없습니다!');
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    if (repairs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #666;">수리 이력이 없습니다.</td></tr>';
+        return;
+    }
+    
+    repairs.forEach(repair => {
+        console.log('수리 이력 데이터:', repair);
+        const row = document.createElement('tr');
+        
+        // 안전한 날짜 포맷팅
+        const formatDate = (dateStr) => {
+            if (!dateStr) return '-';
+            try {
+                return new Date(dateStr).toLocaleDateString('ko-KR');
+            } catch (e) {
+                return dateStr;
+            }
+        };
+        
+        // 안전한 숫자 포맷팅
+        const formatNumber = (value) => {
+            if (value === null || value === undefined || isNaN(value)) {
+                return '0';
+            }
+            return Number(value).toLocaleString('ko-KR');
+        };
+        
+        row.innerHTML = `
+            <td>${formatDate(repair.repair_date)}</td>
+            <td>${repair.device_model || '-'}</td>
+            <td>${repair.problem || '-'}</td>
+            <td>${repair.solution || '-'}</td>
+            <td>${formatNumber(repair.total_cost)}원</td>
+            <td><span class="status-badge status-${repair.status === '완료' ? 'active' : 'inactive'}">${repair.status || '진행중'}</span></td>
+            <td>${repair.warranty || '-'}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="action-btn view-btn" onclick="showRepairDetailModal(${repair.id})">상세</button>
+                    <button class="action-btn edit-btn" onclick="editRepair(${repair.id})">수정</button>
+                    <button class="action-btn delete-btn" onclick="deleteRepair(${repair.id})">삭제</button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
 // 구매 이력 표시
 function displayPurchases(purchases) {
+    console.log('구매 이력 표시 시작, 구매 건수:', purchases.length);
     const tbody = document.getElementById('purchasesTableBody');
+    
+    if (!tbody) {
+        console.error('purchasesTableBody 요소를 찾을 수 없습니다!');
+        return;
+    }
+    
     tbody.innerHTML = '';
     
     if (purchases.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #666;">구매 이력이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #666;">구매 이력이 없습니다.</td></tr>';
         return;
     }
     
     purchases.forEach(purchase => {
+        console.log('구매 이력 데이터:', purchase);
         const row = document.createElement('tr');
-        const itemsText = purchase.items.map(item => `${item.name} (${item.quantity}개)`).join(', ');
-        const purchaseCode = purchase.purchaseCode || '-';
+        
+        // 안전한 날짜 포맷팅
+        const formatDate = (dateStr) => {
+            if (!dateStr) return '-';
+            try {
+                return new Date(dateStr).toLocaleDateString('ko-KR');
+            } catch (e) {
+                return dateStr;
+            }
+        };
+        
+        // 안전한 숫자 포맷팅
+        const formatNumber = (value) => {
+            if (value === null || value === undefined || isNaN(value)) {
+                return '0';
+            }
+            return Number(value).toLocaleString('ko-KR');
+        };
+        
         row.innerHTML = `
-            <td><span class="purchase-code">${purchaseCode}</span></td>
-            <td>${new Date(purchase.purchaseDate).toLocaleDateString('ko-KR')}</td>
-            <td><span class="type-badge type-${purchase.type}">${purchase.type}</span></td>
-            <td>${itemsText}</td>
-            <td>${purchase.totalAmount.toLocaleString('ko-KR')}원</td>
-            <td>${purchase.paymentMethod}</td>
-            <td><span class="status-badge status-${purchase.status === '완료' ? 'active' : 'inactive'}">${purchase.status}</span></td>
+            <td>${formatDate(purchase.purchase_date)}</td>
+            <td>${purchase.purchase_code || '-'}</td>
+            <td>${purchase.type || '-'}</td>
+            <td>${purchase.items ? purchase.items.length + '개 상품' : '0개 상품'}</td>
+            <td>${formatNumber(purchase.total_amount)}원</td>
+            <td>${purchase.payment_method || '-'}</td>
             <td>
                 <div class="action-buttons">
+                    <button class="action-btn view-btn" onclick="showPurchaseDetailModal(${purchase.id})">상세</button>
                     <button class="action-btn edit-btn" onclick="editPurchase(${purchase.id})">수정</button>
                     <button class="action-btn delete-btn" onclick="deletePurchase(${purchase.id})">삭제</button>
                 </div>
@@ -586,6 +725,16 @@ async function deletePurchase(purchaseId) {
             method: 'DELETE',
             credentials: 'include'
         });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('응답이 JSON 형식이 아닙니다.');
+        }
+        
         const result = await response.json();
         
         if (result.success) {

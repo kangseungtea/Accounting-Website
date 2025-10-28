@@ -30,6 +30,7 @@ async function checkUserStatus() {
 // 고객 목록 로드
 async function loadCustomers(page = 1) {
     try {
+        console.log('고객 목록 로드 시작, 페이지:', page);
         const params = new URLSearchParams({
             page: page,
             limit: 10,
@@ -37,44 +38,70 @@ async function loadCustomers(page = 1) {
             status: currentStatus
         });
         
+        console.log('API 요청 URL:', `/api/customers?${params}`);
         const response = await fetch(`/api/customers?${params}`, {
             credentials: 'include'
         });
+        
+        console.log('API 응답 상태:', response.status);
         const result = await response.json();
+        console.log('API 응답 데이터:', result);
         
         if (result.success) {
+            console.log('고객 데이터 개수:', result.data.length);
             displayCustomers(result.data);
             displayPagination(result.pagination);
             currentPage = page;
         } else {
+            console.error('API 오류:', result.message);
             showMessage('고객 목록을 불러오는데 실패했습니다.', 'error');
         }
     } catch (error) {
+        console.error('네트워크 오류:', error);
         showMessage('네트워크 오류가 발생했습니다.', 'error');
     }
 }
 
 // 고객 목록 표시
 function displayCustomers(customers) {
+    console.log('displayCustomers 호출됨, 고객 수:', customers.length);
     const tbody = document.getElementById('customersTableBody');
+    console.log('tbody 요소:', tbody);
+    
+    if (!tbody) {
+        console.error('customersTableBody 요소를 찾을 수 없습니다!');
+        return;
+    }
+    
     tbody.innerHTML = '';
     
     if (customers.length === 0) {
+        console.log('고객 데이터가 없음, 빈 메시지 표시');
         tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #666;">등록된 고객이 없습니다.</td></tr>';
         return;
     }
     
     customers.forEach(customer => {
+        console.log('고객 데이터:', customer);
         const row = document.createElement('tr');
+        
+        // 안전한 숫자 변환 함수
+        const formatNumber = (value) => {
+            if (value === null || value === undefined || isNaN(value)) {
+                return '0';
+            }
+            return Number(value).toLocaleString('ko-KR');
+        };
+        
         row.innerHTML = `
-            <td>${customer.name}</td>
+            <td>${customer.name || '-'}</td>
             <td>${customer.company || '-'}</td>
-            <td>${customer.phone}</td>
+            <td>${customer.phone || '-'}</td>
             <td>${customer.address || '-'}</td>
-            <td>${customer.managementNumber || '-'}</td>
-            <td>${customer.totalSpent.toLocaleString('ko-KR')}원</td>
-            <td>${customer.totalRepairCost.toLocaleString('ko-KR')}원</td>
-            <td><span class="status-badge status-${customer.status === '활성' ? 'active' : 'inactive'}">${customer.status}</span></td>
+            <td>${customer.management_number || customer.managementNumber || '-'}</td>
+            <td>${formatNumber(customer.total_spent || customer.totalSpent)}원</td>
+            <td>${formatNumber(customer.total_repair_cost || customer.totalRepairCost)}원</td>
+            <td><span class="status-badge status-${customer.status === '활성' ? 'active' : 'inactive'}">${customer.status || '활성'}</span></td>
             <td>
                 <div class="action-buttons">
                     <button class="action-btn view-btn" onclick="viewCustomer(${customer.id})">상세</button>

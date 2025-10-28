@@ -58,24 +58,37 @@ async function editRepair(repairId) {
 
 // 수리 이력 삭제
 async function deleteRepair(repairId) {
-    if (confirm('정말로 이 수리 이력을 삭제하시겠습니까?')) {
+    if (!confirm('정말로 이 수리 이력을 삭제하시겠습니까?')) {
+        return;
+    }
+    
     try {
         const response = await fetch(`/api/repairs/${repairId}`, {
             method: 'DELETE',
             credentials: 'include'
         });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('응답이 JSON 형식이 아닙니다.');
+        }
+        
         const result = await response.json();
         
         if (result.success) {
             showMessage('수리 이력이 삭제되었습니다.', 'success');
-                loadRepairs(); // 목록 새로고침
+            loadRepairs(); // 목록 새로고침
         } else {
             showMessage(result.message || '수리 이력 삭제에 실패했습니다.', 'error');
         }
     } catch (error) {
+        console.error('수리 이력 삭제 오류:', error);
         showMessage('네트워크 오류가 발생했습니다.', 'error');
     }
-}
 }
 
 // 수리 이력 상세 보기
@@ -441,27 +454,33 @@ function formatLaborDisplay(labor) {
 
 // 공급가액 계산
 function getSupplyAmount(repair) {
-    if (repair.vatOption === 'included') {
+    const totalCost = repair.totalCost || repair.total_cost || 0;
+    const vatOption = repair.vatOption || repair.vat_option || 'none';
+    
+    if (vatOption === 'included') {
         // 부가세 포함: 총 비용에서 부가세 제외
-        return Math.round(repair.totalCost / 1.1);
-    } else if (repair.vatOption === 'excluded') {
+        return Math.round(totalCost / 1.1);
+    } else if (vatOption === 'excluded') {
         // 부가세 미포함: 총 비용에서 부가세 제외
-        return Math.round(repair.totalCost / 1.1);
-            } else {
+        return Math.round(totalCost / 1.1);
+        } else {
         // 부가세 없음: 총 비용 그대로
-        return repair.totalCost;
+        return totalCost;
     }
 }
 
 // 부가세 계산
 function getVatAmount(repair) {
-    if (repair.vatOption === 'included') {
+    const totalCost = repair.totalCost || repair.total_cost || 0;
+    const vatOption = repair.vatOption || repair.vat_option || 'none';
+    
+    if (vatOption === 'included') {
         // 부가세 포함: 총 비용 - 공급가액
-        return repair.totalCost - getSupplyAmount(repair);
-    } else if (repair.vatOption === 'excluded') {
+        return totalCost - getSupplyAmount(repair);
+    } else if (vatOption === 'excluded') {
         // 부가세 미포함: 공급가액 * 0.1
         return Math.round(getSupplyAmount(repair) * 0.1);
-        } else {
+            } else {
         // 부가세 없음: 0
         return 0;
     }
@@ -501,27 +520,45 @@ function displayRepairs(repairs) {
     repairs.forEach(repair => {
         const row = document.createElement('tr');
         
+        // 안전한 숫자 변환 함수
+        const formatNumber = (value) => {
+            if (value === null || value === undefined || isNaN(value)) {
+                return '0';
+            }
+            return Number(value).toLocaleString('ko-KR');
+        };
+        
+        // 안전한 날짜 포맷팅
+        const formatDate = (dateStr) => {
+            if (!dateStr) return '-';
+            try {
+                return new Date(dateStr).toLocaleDateString('ko-KR');
+            } catch (e) {
+                return dateStr;
+            }
+        };
+        
         // 공급가액, 부가세, 총 비용 계산
         const supplyAmount = getSupplyAmount(repair);
         const vatAmount = getVatAmount(repair);
-        const totalCost = repair.totalCost || 0;
+        const totalCost = repair.totalCost || repair.total_cost || 0;
         
         row.innerHTML = `
-            <td>${new Date(repair.repairDate).toLocaleDateString('ko-KR')}</td>
-            <td>${repair.deviceModel || '-'}</td>
-            <td>${repair.problem}</td>
-            <td>${repair.status}</td>
+            <td>${formatDate(repair.repairDate || repair.repair_date)}</td>
+            <td>${repair.deviceModel || repair.device_model || '-'}</td>
+            <td>${repair.problem || '-'}</td>
+            <td>${repair.status || '-'}</td>
             <td>${repair.technician || '-'}</td>
             <td>
                 <div style="text-align: right;">
                     <div style="font-size: 12px; color: #666; margin-bottom: 2px;">
-                        공급가액: ${supplyAmount.toLocaleString('ko-KR')}원
+                        공급가액: ${formatNumber(supplyAmount)}원
             </div>
                     <div style="font-size: 12px; color: #666; margin-bottom: 2px;">
-                        부가세: ${vatAmount.toLocaleString('ko-KR')}원
+                        부가세: ${formatNumber(vatAmount)}원
             </div>
                     <div style="font-size: 14px; font-weight: bold; color: #1976d2;">
-                        총 ${totalCost.toLocaleString('ko-KR')}원
+                        총 ${formatNumber(totalCost)}원
             </div>
             </div>
             </td>
