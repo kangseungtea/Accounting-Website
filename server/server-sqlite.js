@@ -648,29 +648,61 @@ app.put('/api/customers/:id', requireAuth, (req, res) => {
     const { id } = req.params;
     const { name, company, phone, email, address, managementNumber, status, notes } = req.body;
     
+    // 디버깅: 요청 데이터 확인
+    console.log('🔧 고객 수정 요청 받음 - ID:', id);
+    console.log('📋 요청 데이터:', req.body);
+    console.log('🔍 managementNumber 값:', managementNumber);
+    
     if (!name || !phone) {
         return res.status(400).json({ success: false, message: '이름과 전화번호는 필수입니다.' });
     }
     
-    const query = `
-        UPDATE customers 
-        SET name = ?, company = ?, phone = ?, email = ?, address = ?, 
-            management_number = ?, status = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-    `;
-    const params = [name, company || '', phone, email || '', address || '', 
-                   managementNumber || '', status || '활성', notes || '', id];
+    // 관리번호 중복 체크 (현재 고객 제외)
+    if (managementNumber) {
+        const checkQuery = `
+            SELECT id FROM customers 
+            WHERE management_number = ? AND id != ?
+        `;
+        
+        db.get(checkQuery, [managementNumber, id], (err, row) => {
+            if (err) {
+                console.error('관리번호 중복 체크 오류:', err.message);
+                return res.status(500).json({ success: false, message: '관리번호 중복 체크에 실패했습니다.' });
+            }
+            
+            if (row) {
+                return res.status(400).json({ success: false, message: '이미 사용 중인 관리번호입니다.' });
+            }
+            
+            // 중복이 없으면 업데이트 진행
+            updateCustomer();
+        });
+    } else {
+        // 관리번호가 없으면 바로 업데이트
+        updateCustomer();
+    }
     
-    db.run(query, params, function(err) {
-        if (err) {
-            console.error('고객 수정 오류:', err.message);
-            res.status(500).json({ success: false, message: '고객 정보 수정에 실패했습니다.' });
-        } else if (this.changes === 0) {
-            res.status(404).json({ success: false, message: '고객을 찾을 수 없습니다.' });
-        } else {
-            res.json({ success: true, message: '고객 정보가 수정되었습니다.' });
-        }
-    });
+    function updateCustomer() {
+        const query = `
+            UPDATE customers 
+            SET name = ?, company = ?, phone = ?, email = ?, address = ?, 
+                management_number = ?, status = ?, notes = ?
+            WHERE id = ?
+        `;
+        const params = [name, company || '', phone, email || '', address || '', 
+                       managementNumber || '', status || '활성', notes || '', id];
+        
+        db.run(query, params, function(err) {
+            if (err) {
+                console.error('고객 수정 오류:', err.message);
+                res.status(500).json({ success: false, message: '고객 정보 수정에 실패했습니다.' });
+            } else if (this.changes === 0) {
+                res.status(404).json({ success: false, message: '고객을 찾을 수 없습니다.' });
+            } else {
+                res.json({ success: true, message: '고객 정보가 수정되었습니다.' });
+            }
+        });
+    }
 });
 
 // 고객 삭제 API
@@ -997,7 +1029,7 @@ app.put('/api/products/:id', requireAuth, (req, res) => {
     const query = `
         UPDATE products 
         SET product_code = ?, name = ?, brand = ?, main_category = ?, sub_category = ?, detail_category = ?, 
-            selling_price = ?, stock_quantity = ?, description = ?, updated_at = CURRENT_TIMESTAMP
+            selling_price = ?, stock_quantity = ?, description = ?
         WHERE id = ?
     `;
     
@@ -1360,26 +1392,41 @@ app.put('/api/repairs/:id', requireAuth, (req, res) => {
     const { id } = req.params;
     const { deviceModel, problem, solution, status, warranty, technician, totalCost, vatOption, parts, labor } = req.body;
     
+    console.log('🔧 수리 이력 수정 요청 받음 - ID:', id);
+    console.log('📋 요청 데이터:', JSON.stringify(req.body, null, 2));
+    console.log('🔍 필수 필드 검증:');
+    console.log('  - deviceModel:', deviceModel, '(존재:', !!deviceModel, ')');
+    console.log('  - problem:', problem, '(존재:', !!problem, ')');
+    
     if (!deviceModel || !problem) {
+        console.error('❌ 필수 필드 누락 - deviceModel:', !!deviceModel, 'problem:', !!problem);
         return res.status(400).json({ success: false, message: '모델명과 문제는 필수입니다.' });
     }
     
     const query = `
         UPDATE repairs 
         SET device_model = ?, problem = ?, solution = ?, status = ?, warranty = ?, 
-            technician = ?, total_cost = ?, vat_option = ?, updated_at = CURRENT_TIMESTAMP
+            technician = ?, total_cost = ?, vat_option = ?
         WHERE id = ?
     `;
     const params = [deviceModel, problem, solution || '', status || '진행중', 
                    warranty || '', technician || '', totalCost || 0, vatOption || 'included', id];
     
+    console.log('💾 데이터베이스 업데이트 쿼리 실행:');
+    console.log('  - 쿼리:', query);
+    console.log('  - 파라미터:', params);
+    
     db.run(query, params, function(err) {
         if (err) {
-            console.error('수리 이력 수정 오류:', err.message);
+            console.error('💥 수리 이력 수정 오류:', err.message);
+            console.error('📍 에러 코드:', err.code);
+            console.error('📍 에러 스택:', err.stack);
             res.status(500).json({ success: false, message: '수리 이력 수정에 실패했습니다.' });
         } else if (this.changes === 0) {
+            console.warn('⚠️ 수리 이력을 찾을 수 없음 - ID:', id);
             res.status(404).json({ success: false, message: '수리 이력을 찾을 수 없습니다.' });
         } else {
+            console.log('✅ 수리 이력 업데이트 성공 - 변경된 행 수:', this.changes);
             // 수리 부품과 인건비도 업데이트
             if (parts && Array.isArray(parts)) {
                 // 기존 부품 삭제

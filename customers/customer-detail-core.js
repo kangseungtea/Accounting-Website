@@ -115,6 +115,7 @@ function displayCustomerInfo(customer) {
     document.getElementById('customerPhone').textContent = customer.phone || '전화번호 없음';
     document.getElementById('customerEmail').textContent = customer.email || '이메일 없음';
     document.getElementById('customerAddress').textContent = customer.address || '주소 없음';
+    document.getElementById('customerManagementNumber').textContent = customer.management_number || customer.managementNumber || '관리번호 없음';
     document.getElementById('customerNotes').textContent = customer.notes || '비고 없음';
     
     // 고객 상태
@@ -212,6 +213,16 @@ function showTab(tabName) {
     // 선택된 탭 활성화
     event.target.classList.add('active');
     document.getElementById(tabName + 'Tab').classList.add('active');
+    
+    // 수리 이력 탭인 경우 통계 업데이트
+    if (tabName === 'repairs') {
+        console.log('📊 수리 이력 탭 활성화됨, 통계 업데이트 중...');
+        setTimeout(() => {
+            if (typeof window.loadRepairs === 'function') {
+                window.loadRepairs();
+            }
+        }, 100);
+    }
 }
 
 // 뒤로가기 함수

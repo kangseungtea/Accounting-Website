@@ -183,6 +183,12 @@ async function editCustomer(customerId) {
         
         if (result.success) {
             const customer = result.data;
+            
+            // 디버깅: 고객 데이터 확인
+            console.log('🔍 고객 수정 데이터:', customer);
+            console.log('🔍 management_number:', customer.management_number);
+            console.log('🔍 managementNumber:', customer.managementNumber);
+            
             document.getElementById('modalTitle').textContent = '고객 정보 수정';
             document.getElementById('customerName').value = customer.name;
             document.getElementById('customerCompany').value = customer.company || '';
@@ -190,7 +196,7 @@ async function editCustomer(customerId) {
             document.getElementById('customerPhone').value = customer.phone;
             document.getElementById('customerEmail').value = customer.email || '';
             document.getElementById('customerAddress').value = customer.address || '';
-            document.getElementById('customerManagementNumber').value = customer.managementNumber || '';
+            document.getElementById('customerManagementNumber').value = customer.management_number || customer.managementNumber || '';
             document.getElementById('customerStatus').value = customer.status;
             document.getElementById('customerNotes').value = customer.notes || '';
             
@@ -258,6 +264,10 @@ document.getElementById('customerForm').addEventListener('submit', async (e) => 
     
     const formData = new FormData(e.target);
     const customerData = Object.fromEntries(formData);
+    
+    // 디버깅: 폼 데이터 확인
+    console.log('📋 폼 데이터 수집:', customerData);
+    console.log('🔍 managementNumber 값:', customerData.managementNumber);
     
     const customerId = e.target.getAttribute('data-customer-id');
     const isEdit = !!customerId;
