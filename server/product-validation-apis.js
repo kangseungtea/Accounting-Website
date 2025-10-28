@@ -176,6 +176,7 @@ router.post('/api/products/generate-code', (req, res, next) => {
             });
             res.json({ 
                 success: true, 
+                productCode: newGeneratedCode,
                 code: newGeneratedCode,
                 breakdown: {
                     mainCategory: mainCode,
@@ -191,6 +192,7 @@ router.post('/api/products/generate-code', (req, res, next) => {
             });
             res.json({ 
                 success: true, 
+                productCode: generatedCode,
                 code: generatedCode,
                 breakdown: {
                     mainCategory: mainCode,

@@ -224,14 +224,14 @@ function displayProducts(products) {
             
             row.className = indentClass;
             row.innerHTML = `
-                <td><span class="product-code">${product.product_code || product.productCode || '-'}</span></td>
-                <td>${productGroup.length > 1 ? '└ ' : ''}${product.name || '-'}</td>
-                <td>${product.main_category || product.category || '-'}</td>
-                <td>${product.brand || '-'}</td>
-                <td>${formatNumber(product.price)}원</td>
-                <td class="${stockClass}" style="color: ${stockColor}; font-weight: bold;">${stockQuantity}개</td>
-                <td><span class="status-badge ${statusClass}">${product.status || '정품'}</span></td>
-                <td>
+                <td class="product-code-cell"><span class="product-code">${product.product_code || product.productCode || '-'}</span></td>
+                <td class="product-name-cell">${productGroup.length > 1 ? '└ ' : ''}${product.name || '-'}</td>
+                <td class="product-category-cell">${product.main_category || product.category || '-'}</td>
+                <td class="product-brand-cell">${product.brand || '-'}</td>
+                <td class="product-price-cell">${formatNumber(product.price)}원</td>
+                <td class="product-stock-cell ${stockClass}" style="color: ${stockColor}; font-weight: bold;">${stockQuantity}개</td>
+                <td class="product-status-cell"><span class="status-badge ${statusClass}">${product.status || '정품'}</span></td>
+                <td class="product-action-cell">
                     <div class="action-buttons">
                         <button class="action-btn view-btn" onclick="viewProductDetail(${product.id})">상세</button>
                         <button class="action-btn edit-btn" onclick="editProduct(${product.id})">수정</button>

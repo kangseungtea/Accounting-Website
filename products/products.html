@@ -70,7 +70,7 @@
                     <th>액션</th>
                 </tr>
                 </thead>
-                <tbody id="productsTableBody">
+                <tbody id="productsTableBody" style="text-align: center;"> 
                     <!-- 제품 데이터가 여기에 동적으로 추가됩니다 -->
                 </tbody>
             </table>
@@ -307,6 +307,164 @@
         .stock-available {
             color: #28a745 !important;
             font-weight: bold;
+        }
+        
+        /* 제품 테이블 컨테이너 스타일 */
+        .products-table-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        
+        /* 제품 테이블 스타일 */
+        .products-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 8px;
+            margin-top: 10px;
+            table-layout: fixed;
+        }
+        
+        .products-table thead {
+            background: white;
+        }
+        
+        .products-table thead th {
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        /* 각 열 너비 설정 - 필요에 따라 수정하세요 */
+        .products-table thead th:nth-child(1),  /* 제품코드 */
+        .products-table tbody td:nth-child(1) {
+            width: 10%;
+        }
+        
+        .products-table thead th:nth-child(2),  /* 제품명 */
+        .products-table tbody td:nth-child(2) {
+            width: 30%;
+        }
+        
+        .products-table thead th:nth-child(3),  /* 카테고리 */
+        .products-table tbody td:nth-child(3) {
+            width: 10%;
+        }
+        
+        .products-table thead th:nth-child(4),  /* 브랜드 */
+        .products-table tbody td:nth-child(4) {
+            width: 10%;
+        }
+        
+        .products-table thead th:nth-child(5),  /* 가격 */
+        .products-table tbody td:nth-child(5) {
+            width: 10%;
+        }
+        
+        .products-table thead th:nth-child(6),  /* 재고 */
+        .products-table tbody td:nth-child(6) {
+            width: 8%;
+        }
+        
+        .products-table thead th:nth-child(7),  /* 상태 */
+        .products-table tbody td:nth-child(7) {
+            width: 10%;
+        }
+        
+        .products-table thead th:nth-child(8),  /* 액션 */
+        .products-table tbody td:nth-child(8) {
+            width: 12%;
+        }
+        
+        .products-table thead th:first-child {
+            border-top-left-radius: 8px;
+        }
+        
+        .products-table thead th:last-child {
+            border-top-right-radius: 8px;
+        }
+        
+        /* 제품 테이블 셀 카드 스타일 */
+        .products-table tbody td {
+            padding: 15px 10px;
+            vertical-align: middle;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .products-table tbody td:not(:last-child) {
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+        }
+        
+        .products-table tbody tr {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .products-table tbody tr td:first-child {
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
+        }
+        
+        .products-table tbody tr td:last-child {
+            background: white;
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+        
+        .product-info-cell {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin: 2px 0;
+        }
+        
+        .product-code-cell {
+            background: linear-gradient(135deg, #e7f5ff 0%, #ffffff 100%);
+            border-left: 3px solid #007bff;
+        }
+        
+        .product-name-cell {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .product-category-cell {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        }
+        
+        .product-brand-cell {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        }
+        
+        .product-price-cell {
+            background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%);
+            color: #28a745;
+            font-weight: bold;
+            border-left: 3px solid #28a745;
+        }
+        
+        .product-stock-cell {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffffff 100%);
+            font-weight: bold;
+            border-left: 3px solid #ff9800;
+        }
+        
+        .product-status-cell {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        }
+        
+        .product-action-cell {
+            background: white;
         }
     </style>
 

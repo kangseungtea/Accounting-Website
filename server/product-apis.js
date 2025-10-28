@@ -161,6 +161,10 @@ router.get('/api/products/:id', getRequireAuth(), (req, res) => {
  * POST /api/products
  */
 router.post('/api/products', getRequireAuth(), (req, res) => {
+    console.log('=== 제품 등록 API 요청 ===');
+    console.log('req.body:', req.body);
+    console.log('req.body.productCode:', req.body.productCode);
+    
     const { 
         name, 
         productCode, 
@@ -175,7 +179,10 @@ router.post('/api/products', getRequireAuth(), (req, res) => {
     } = req.body;
     const db = req.db; // 데이터베이스는 미들웨어에서 주입
     
+    console.log('추출된 productCode:', productCode);
+    
     if (!name || !productCode) {
+        console.error('제품명 또는 제품코드 누락:', { name, productCode });
         return res.status(400).json({ success: false, message: '제품명과 제품코드는 필수입니다.' });
     }
     

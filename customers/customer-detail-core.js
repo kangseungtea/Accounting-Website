@@ -343,5 +343,11 @@ function showTab(tabName) {
 
 // 뒤로가기 함수
 function goBack() {
-    window.location.href = 'customers.html';
+    // 모달 안에서 실행되는 경우 모달 닫기
+    if (window.top !== window.self && typeof window.top.closeCustomerDetailModal === 'function') {
+        window.top.closeCustomerDetailModal();
+    } else {
+        // 독립 페이지에서 실행되는 경우 고객 관리 페이지로 이동
+        window.location.href = 'customers.html';
+    }
 }

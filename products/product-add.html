@@ -508,8 +508,11 @@
             productData.price = parseInt(productData.price);
             productData.stockQuantity = productData.stockQuantity ? parseInt(productData.stockQuantity) : 0;
             
-            // 제품 코드 추가
-            productData.productCode = document.getElementById('productCode').value;
+            // 제품 코드 확인
+            console.log('제품 코드 최종 확인:', productData.productCode);
+            const codeField = document.getElementById('productCode');
+            console.log('제품 코드 input 요소:', codeField);
+            console.log('제품 코드 input 값:', codeField ? codeField.value : 'element not found');
             
             // 로딩 상태 설정
             const form = e.target;
