@@ -368,7 +368,7 @@ app.get('/api/customers', requireAuth, (req, res) => {
     }, 0);
     
     // 디버깅 로그
-    if (customer.id === 1759925543792) {
+    if (customer.id === 1759932441952) {
       console.log(`고객 ${customer.name} (ID: ${customer.id}) 구매 이력:`, customerPurchases);
       console.log(`총 구매 금액: ${totalSpent}원`);
       console.log(`수리 이력:`, customerRepairs);
@@ -1051,6 +1051,16 @@ const categoryCodeMapping = {
       '키보드': { code: '51', detailCategories: { '기계식': '511', '멤브레인': '512', '무선': '513' } },
       '마우스': { code: '52', detailCategories: { '게이밍마우스': '521', '무선마우스': '522', '트랙볼': '523' } },
       '스피커': { code: '53', detailCategories: { '게이밍스피커': '531', '블루투스스피커': '532', '홈시어터': '533' } }
+    }
+  },
+  '프린터': {
+    code: '70',
+    subCategories: {
+      '잉크젯프린터': { code: '71', detailCategories: { '가정용': '711', '사무용': '712', '포토프린터': '713' } },
+      '레이저프린터': { code: '72', detailCategories: { '흑백레이저': '721', '컬러레이저': '722', '복합기': '723' } },
+      '토너': { code: '73', detailCategories: { '잉크카트리지': '731', '토너카트리지': '732', '드럼유닛': '733' } },
+      '용지': { code: '74', detailCategories: { 'A4용지': '741', 'A3용지': '742', '사진용지': '743', '라벨용지': '744' } },
+      '기타부품': { code: '75', detailCategories: { '펌프': '751', '헤드': '752', '롤러': '753', '케이블': '754' } }
     }
   }
 };

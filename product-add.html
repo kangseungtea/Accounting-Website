@@ -348,12 +348,12 @@
         // 사용자 상태 확인
         async function checkUserStatus() {
             try {
-                const response = await fetch('/api/check-auth', {
+                const response = await fetch('/api/auth/status', {
                     credentials: 'include'
                 });
                 const result = await response.json();
                 
-                if (!result.success) {
+                if (!result.success || !result.isLoggedIn) {
                     window.location.href = 'index.html';
                 }
             } catch (error) {

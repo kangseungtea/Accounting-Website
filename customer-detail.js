@@ -239,13 +239,13 @@ function getWarrantyStatus(repair) {
 // 사용자 상태 확인
 async function checkUserStatus() {
     try {
-        const response = await fetch('/api/check-auth', {
+        const response = await fetch('/api/auth/status', {
             credentials: 'include'
         });
         const result = await response.json();
         
-        if (result.success) {
-            document.getElementById('userName').textContent = result.user.name;
+        if (result.success && result.isLoggedIn) {
+            document.getElementById('userName').textContent = result.user.username;
         } else {
             window.location.href = 'index.html';
         }

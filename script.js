@@ -157,8 +157,13 @@ loginForm.addEventListener('submit', async (e) => {
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify({ username, password })
         });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         
         const data = await response.json();
         
@@ -167,7 +172,7 @@ loginForm.addEventListener('submit', async (e) => {
             // 로그인 성공 시 대시보드로 이동
             setTimeout(() => {
                 showDashboard();
-                document.getElementById('userName').textContent = data.user.name;
+                document.getElementById('userName').textContent = data.user.username;
             }, 1500);
         } else {
             showMessage(data.message, 'error');
@@ -253,14 +258,14 @@ window.addEventListener('load', () => {
 // 사용자 상태 확인
 async function checkUserStatus() {
     try {
-        const response = await fetch('/api/check-auth', {
+        const response = await fetch('/api/auth/status', {
             credentials: 'include'
         });
         const result = await response.json();
         
-        if (result.success) {
+        if (result.success && result.isLoggedIn) {
             showDashboard();
-            document.getElementById('userName').textContent = result.user.name;
+            document.getElementById('userName').textContent = result.user.username;
         } else {
             showHome();
         }

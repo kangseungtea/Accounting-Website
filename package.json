@@ -4,14 +4,20 @@
   "description": "로그인/회원가입 앱",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node server-sqlite.js",
+    "dev": "nodemon server-sqlite.js",
+    "prod": "NODE_ENV=production node server-sqlite.js",
+    "build": "echo 'Build completed'",
+    "deploy": "npm run build && npm run prod"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
+    "bcrypt": "^5.1.1",
     "body-parser": "^1.20.2",
-    "cookie-parser": "^1.4.6"
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-session": "^1.18.2",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
