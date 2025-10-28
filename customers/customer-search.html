@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>고객 검색 - 깜냥컴퓨터</title>
+    <link rel="stylesheet" href="../shared/style.css">
+    <style>
+        .search-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .search-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .search-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .form-group label {
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .form-group input,
+        .form-group select {
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+        
+        .search-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn-search {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn-search:hover {
+            background: #0056b3;
+        }
+        
+        .btn-reset {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn-reset:hover {
+            background: #545b62;
+        }
+        
+        .btn-export {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn-export:hover {
+            background: #218838;
+        }
+        
+        .results-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .results-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .results-count {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        
+        .customer-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .customer-table th,
+        .customer-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .customer-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #555;
+            position: sticky;
+            top: 0;
+        }
+        
+        .customer-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .customer-name {
+            font-weight: bold;
+            color: #007bff;
+            cursor: pointer;
+        }
+        
+        .customer-name:hover {
+            text-decoration: underline;
+        }
+        
+        .customer-phone {
+            color: #28a745;
+        }
+        
+        .customer-email {
+            color: #6c757d;
+        }
+        
+        .customer-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .repair-count {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        
+        .pagination button:hover {
+            background: #f8f9fa;
+        }
+        
+        .pagination button.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #6c757d;
+            padding: 40px;
+            font-style: italic;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #6c757d;
+            padding: 20px;
+        }
+        
+        .advanced-search {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .advanced-search-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #555;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        
+        .date-range {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>고객 검색</h1>
+            <nav class="nav">
+                <a href="../shared/index.html">홈</a>
+                <a href="customers.html">고객</a>
+                <a href="../products/products.html">제품</a>
+                <a href="../repairs/repair-management.html">장부</a>
+                <a href="../shared/index.html">회계</a>
+                <a href="../shared/index.html">설정</a>
+            </nav>
+        </header>
+
+        <main class="main">
+            <!-- 검색 폼 -->
+            <div class="search-container">
+                <div class="search-title">고급 검색</div>
+                
+                <form class="search-form" id="searchForm">
+                    <div class="form-group">
+                        <label for="searchName">고객명</label>
+                        <input type="text" id="searchName" placeholder="고객명을 입력하세요">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="searchPhone">전화번호</label>
+                        <input type="text" id="searchPhone" placeholder="전화번호를 입력하세요">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="searchEmail">이메일</label>
+                        <input type="email" id="searchEmail" placeholder="이메일을 입력하세요">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="searchManagementNumber">관리번호</label>
+                        <input type="text" id="searchManagementNumber" placeholder="관리번호를 입력하세요">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="searchStatus">상태</label>
+                        <select id="searchStatus">
+                            <option value="">전체</option>
+                            <option value="active">활성</option>
+                            <option value="inactive">비활성</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="searchRepairCount">수리 건수</label>
+                        <select id="searchRepairCount">
+                            <option value="">전체</option>
+                            <option value="0">0건</option>
+                            <option value="1-5">1-5건</option>
+                            <option value="6-10">6-10건</option>
+                            <option value="11+">11건 이상</option>
+                        </select>
+                    </div>
+                </form>
+                
+                <!-- 고급 검색 옵션 -->
+                <div class="advanced-search">
+                    <div class="advanced-search-title">고급 검색 옵션</div>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="includeRepairHistory">
+                        <label for="includeRepairHistory">수리 이력 포함 검색</label>
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="includePurchaseHistory">
+                        <label for="includePurchaseHistory">구매 이력 포함 검색</label>
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="exactMatch">
+                        <label for="exactMatch">정확한 일치만 검색</label>
+                    </div>
+                    
+                    <div class="date-range">
+                        <label>등록일 범위:</label>
+                        <input type="date" id="dateFrom">
+                        <span>~</span>
+                        <input type="date" id="dateTo">
+                    </div>
+                </div>
+                
+                <div class="search-buttons">
+                    <button class="btn-search" onclick="performSearch()">검색</button>
+                    <button class="btn-reset" onclick="resetSearch()">초기화</button>
+                    <button class="btn-export" onclick="exportResults()">결과 내보내기</button>
+                </div>
+            </div>
+
+            <!-- 검색 결과 -->
+            <div class="results-container">
+                <div class="results-header">
+                    <div class="results-title">검색 결과</div>
+                    <div class="results-count" id="resultsCount">0명</div>
+                </div>
+                
+                <div id="searchResults">
+                    <div class="empty-state">검색 조건을 입력하고 검색 버튼을 클릭하세요.</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="customer-search.js"></script>
+</body>
+</html>

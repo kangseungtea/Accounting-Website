@@ -30,7 +30,12 @@
     <div class="customers-page">
         <div class="page-header">
             <h1>고객 관리</h1>
-            <button class="btn btn-primary" onclick="showAddCustomerModal()">+ 새 고객 등록</button>
+            <div class="header-actions">
+                <button class="btn btn-outline" onclick="window.open('customer-search.html', '_blank')">🔍 고급 검색</button>
+                <button class="btn btn-outline" onclick="window.open('customer-stats.html', '_blank')">📊 고객 통계</button>
+                <button class="btn btn-outline" onclick="window.open('customer-notifications.html', '_blank')">🔔 고객 알림</button>
+                <button class="btn btn-primary" onclick="showAddCustomerModal()">+ 새 고객 등록</button>
+            </div>
         </div>
         
         <div class="search-filter">

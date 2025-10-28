@@ -247,7 +247,7 @@ async function showRepairDetailModal(repair) {
     const detailDeviceModel = document.getElementById('detailDeviceModel');
     const detailProblem = document.getElementById('detailProblem');
     const detailSolution = document.getElementById('detailSolution');
-    const detailWarranty = document.getElementById('detailWarranty');
+    const detailManagementNumber = document.getElementById('detailManagementNumber');
     const detailTechnician = document.getElementById('detailTechnician');
     const detailStatus = document.getElementById('detailStatus');
     
@@ -255,7 +255,7 @@ async function showRepairDetailModal(repair) {
     console.log('detailDeviceModel 요소:', detailDeviceModel);
     console.log('detailProblem 요소:', detailProblem);
     console.log('detailSolution 요소:', detailSolution);
-    console.log('detailWarranty 요소:', detailWarranty);
+    console.log('detailManagementNumber 요소:', detailManagementNumber);
     console.log('detailTechnician 요소:', detailTechnician);
     console.log('detailStatus 요소:', detailStatus);
     
@@ -274,8 +274,8 @@ async function showRepairDetailModal(repair) {
     if (detailSolution) {
         detailSolution.textContent = repair.solution || '-';
     }
-    if (detailWarranty) {
-        detailWarranty.textContent = repair.warranty || '-';
+    if (detailManagementNumber) {
+        detailManagementNumber.textContent = repair.management_number || '-';
     }
     if (detailTechnician) {
         detailTechnician.textContent = repair.technician || '-';
@@ -345,8 +345,8 @@ function closeRepairDetailModal() {
     }
 }
 
-// 수리 이력 상세 프린트
-function printRepairDetail() {
+// 수리 이력 상세 프린트 (고객 상세 페이지에서 사용) - 비활성화됨
+function printRepairDetail_OLD_DISABLED() {
     const modal = document.getElementById('repairDetailModal');
     if (!modal) {
         console.error('repairDetailModal 요소를 찾을 수 없습니다.');
@@ -551,7 +551,7 @@ function printRepairDetail() {
         deviceModel: document.getElementById('detailDeviceModel').textContent,
         problem: document.getElementById('detailProblem').textContent,
         solution: document.getElementById('detailSolution').textContent,
-        warranty: document.getElementById('detailWarranty').textContent,
+        managementNumber: document.getElementById('detailManagementNumber').textContent,
         technician: document.getElementById('detailTechnician').textContent,
         status: document.getElementById('detailStatus').textContent,
         parts: document.getElementById('detailParts').innerHTML,

@@ -292,9 +292,11 @@ app.get('/api/purchases', requireAuth, (req, res) => {
                 return;
             }
             
+            // 대시보드 호환성을 위한 응답 형식
             res.json({
                 success: true,
-                data: purchases,
+                purchases: purchases, // 대시보드에서 사용하는 키
+                data: purchases, // 기존 호환성
                 pagination: {
                     page: parseInt(page),
                     limit: parseInt(limit),
@@ -639,6 +641,55 @@ app.get('/api/customers/:id', requireAuth, (req, res) => {
             res.status(404).json({ success: false, message: '고객을 찾을 수 없습니다.' });
         } else {
             res.json({ success: true, data: row });
+        }
+    });
+});
+
+// 고객 통계 API
+app.get('/api/customers/stats', requireAuth, (req, res) => {
+    const { dateFrom, dateTo, customerId, status } = req.query;
+    
+    let whereClause = 'WHERE 1=1';
+    const params = [];
+    
+    if (dateFrom) {
+        whereClause += ' AND r.repair_date >= ?';
+        params.push(dateFrom);
+    }
+    if (dateTo) {
+        whereClause += ' AND r.repair_date <= ?';
+        params.push(dateTo);
+    }
+    if (customerId) {
+        whereClause += ' AND r.customer_id = ?';
+        params.push(customerId);
+    }
+    if (status) {
+        whereClause += ' AND r.status = ?';
+        params.push(status);
+    }
+    
+    const query = `
+        SELECT 
+            c.id as customer_id,
+            c.name as customer_name,
+            COUNT(r.id) as repair_count,
+            COALESCE(SUM(r.total_cost), 0) as total_cost,
+            COALESCE(AVG(r.total_cost), 0) as avg_cost,
+            COALESCE(MAX(r.total_cost), 0) as max_cost,
+            COALESCE(MIN(r.total_cost), 0) as min_cost
+        FROM customers c
+        LEFT JOIN repairs r ON c.id = r.customer_id ${whereClause.replace('WHERE 1=1', '')}
+        GROUP BY c.id, c.name
+        ORDER BY repair_count DESC, total_cost DESC
+    `;
+    
+    db.all(query, params, (err, rows) => {
+        if (err) {
+            console.error('고객 통계 조회 오류:', err.message);
+            res.status(500).json({ success: false, message: '고객 통계를 불러오는데 실패했습니다.' });
+        } else {
+            res.json({ success: true, data: rows });
         }
     });
 });
@@ -1184,7 +1235,7 @@ app.get('/api/repairs', requireAuth, (req, res) => {
     const offset = (page - 1) * limit;
     
     let query = `
-        SELECT r.*, c.name as customer_name
+        SELECT r.*, c.name as customer_name, c.management_number
         FROM repairs r
         JOIN customers c ON r.customer_id = c.id
         WHERE 1=1
@@ -1328,7 +1379,12 @@ app.get('/api/repairs/:id', requireAuth, (req, res) => {
     
     console.log(`수리 이력 상세 조회 요청, ID: ${id}`);
     
-    const query = 'SELECT * FROM repairs WHERE id = ?';
+    const query = `
+        SELECT r.*, c.management_number 
+        FROM repairs r 
+        LEFT JOIN customers c ON r.customer_id = c.id 
+        WHERE r.id = ?
+    `;
     db.get(query, [id], (err, row) => {
         if (err) {
             console.error('수리 이력 상세 조회 오류:', err.message);
@@ -1337,6 +1393,7 @@ app.get('/api/repairs/:id', requireAuth, (req, res) => {
             res.status(404).json({ success: false, message: '수리 이력을 찾을 수 없습니다.' });
         } else {
             console.log('수리 이력 기본 정보:', row);
+            console.log('🔢 management_number 값:', row.management_number);
             
             // 수리 부품과 인건비 정보도 함께 조회
             const partsQuery = `

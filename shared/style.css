@@ -151,6 +151,213 @@ body {
     font-size: 14px;
 }
 
+/* 매출/매입 분석 스타일 */
+.analysis-section {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+
+.analysis-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.analysis-header h2 {
+    color: #333;
+    margin: 0;
+    font-size: 24px;
+}
+
+.analysis-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.analysis-controls select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+}
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 30px;
+}
+
+.summary-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 6px;
+    padding: 5px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+.summary-card.revenue {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.summary-card.expense {
+    background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+}
+
+.summary-card.net {
+    background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+}
+
+.summary-card.vat {
+    background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);
+}
+
+.card-icon {
+    font-size: 32px;
+    opacity: 0.9;
+}
+
+.card-content {
+    flex: 1;
+}
+
+.card-title {
+    font-size: 14px;
+    opacity: 0.9;
+    margin-bottom: 5px;
+}
+
+.card-value {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 3px;
+}
+
+.card-subtitle {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.analysis-table-container {
+    margin-top: 25px;
+}
+
+.analysis-table-container h3 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.analysis-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    min-width: 800px;
+}
+
+.analysis-table th {
+    background: #f8f9fa;
+    color: #555;
+    font-weight: bold;
+    padding: 15px 12px;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+    position: sticky;
+    top: 0;
+}
+
+.analysis-table td {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+}
+
+.analysis-table tr:hover {
+    background: #f8f9fa;
+}
+
+.analysis-table .number {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+}
+
+.analysis-table .loading {
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    padding: 40px;
+}
+
+.positive {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.negative {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.total-row {
+    background: #e3f2fd !important;
+    font-weight: bold;
+}
+
+.total-row td {
+    border-top: 2px solid #2196f3;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .analysis-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .analysis-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .summary-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .summary-card {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+    
+    .card-icon {
+        font-size: 28px;
+    }
+}
+
 /* 사용자 정보 */
 .user-info {
     display: flex;
@@ -180,6 +387,12 @@ body {
     margin-bottom: 30px;
     padding-bottom: 20px;
     border-bottom: 2px solid #f0f0f0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
 
 .page-header h1 {

@@ -71,22 +71,84 @@
         <!-- 대시보드 화면 -->
         <div class="dashboard" id="dashboard" style="display: none;">
             <h1>대시보드</h1>
-            <div class="dashboard-grid">
-                <div class="dashboard-card" onclick="showCustomers()">
-                    <h3>고객 관리</h3>
-                    <p>고객 정보를 관리합니다</p>
+            
+            <!-- 매출/매입 분석 섹션 -->
+            <div class="analysis-section">
+                <div class="analysis-header">
+                    <h2>📊 매출/매입 분석</h2>
+                    <div class="analysis-controls">
+                        <select id="analysisPeriod" onchange="updateAnalysis()">
+                            <option value="daily">일별</option>
+                            <option value="monthly" selected>월별</option>
+                            <option value="yearly">연도별</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="refreshAnalysis()">🔄 새로고침</button>
+                    </div>
                 </div>
-                <div class="dashboard-card" onclick="showProducts()">
-                    <h3>제품 관리</h3>
-                    <p>제품 재고를 관리합니다</p>
+                
+                <!-- 요약 카드들 -->
+                <div class="summary-cards">
+                    <div class="summary-card revenue">
+                        <div class="card-icon">💰</div>
+                        <div class="card-content">
+                            <div class="card-title">총 매출</div>
+                            <div class="card-value" id="totalRevenue">0원</div>
+                            <div class="card-subtitle" id="revenueCount">0건</div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card expense">
+                        <div class="card-icon">💸</div>
+                        <div class="card-content">
+                            <div class="card-title">총 매입</div>
+                            <div class="card-value" id="totalExpense">0원</div>
+                            <div class="card-subtitle" id="expenseCount">0건</div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card net">
+                        <div class="card-icon">📈</div>
+                        <div class="card-content">
+                            <div class="card-title">순이익</div>
+                            <div class="card-value" id="netProfit">0원</div>
+                            <div class="card-subtitle" id="profitMargin">0%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-card vat">
+                        <div class="card-icon">🧾</div>
+                        <div class="card-content">
+                            <div class="card-title">부가세</div>
+                            <div class="card-value" id="totalVat">0원</div>
+                            <div class="card-subtitle" id="vatBreakdown">매출/매입</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="dashboard-card" onclick="showLedger()">
-                    <h3>장부 관리</h3>
-                    <p>수리 내역을 관리합니다</p>
-                </div>
-                <div class="dashboard-card" onclick="showAccounting()">
-                    <h3>회계 관리</h3>
-                    <p>수입/지출을 관리합니다</p>
+                
+                <!-- 상세 분석 테이블 -->
+                <div class="analysis-table-container">
+                    <h3>상세 분석</h3>
+                    <div class="table-wrapper">
+                        <table class="analysis-table" id="analysisTable">
+                            <thead>
+                                <tr>
+                                    <th>기간</th>
+                                    <th class="number">매출 공급가액</th>
+                                    <th class="number">매출 부가세</th>
+                                    <th class="number">매출 총액</th>
+                                    <th class="number">매입 공급가액</th>
+                                    <th class="number">매입 부가세</th>
+                                    <th class="number">매입 총액</th>
+                                    <th class="number">순이익</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analysisTableBody">
+                                <tr>
+                                    <td colspan="8" class="loading">데이터를 분석하는 중...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
