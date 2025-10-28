@@ -345,7 +345,27 @@
         </div>
     </div>
     
+    <!-- 매출 관련 모듈들 -->
+    <script src="/accounting/modules/revenue-calculator.js"></script>
+    <script src="/accounting/modules/revenue-ui.js"></script>
+    <script src="/accounting/modules/revenue-utils.js"></script>
+    <script src="/accounting/modules/sales-analysis-table.js"></script>
+    <script src="/accounting/modules/analysis-table.js"></script>
+    <script src="/accounting/modules/expense-calculator.js"></script>
+    <script src="/accounting/modules/stock-calculator.js"></script>
     <script src="/products/category-manager.js"></script>
+    <script src="/revenue-files/detail-table.js"></script>
+    <script>
+        // DetailTable 모듈 로드 확인 및 script.js 로드
+        window.addEventListener('load', function() {
+            console.log('DetailTable 모듈 상태:', typeof DetailTable);
+            if (typeof DetailTable === 'undefined') {
+                console.error('DetailTable 모듈이 로드되지 않았습니다!');
+            } else {
+                console.log('DetailTable 모듈이 정상적으로 로드되었습니다.');
+            }
+        });
+    </script>
     <script src="/script.js"></script>
 </body>
 </html>

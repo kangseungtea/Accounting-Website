@@ -52,13 +52,16 @@ CREATE TABLE purchases (
     purchase_code TEXT UNIQUE,
     purchase_date DATETIME NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('판매', '구매', '반품')),
+    original_type TEXT,  -- 원래 거래 유형 (반품인 경우에만 사용)
+    original_purchase_id INTEGER,  -- 원래 거래 ID (반품인 경우에만 사용)
     total_amount INTEGER NOT NULL,
     payment_method TEXT,
     tax_option TEXT DEFAULT 'included' CHECK (tax_option IN ('included', 'excluded', 'none')),
     status TEXT DEFAULT '완료',
     notes TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (customer_id) REFERENCES customers(id)
+    FOREIGN KEY (customer_id) REFERENCES customers(id),
+    FOREIGN KEY (original_purchase_id) REFERENCES purchases(id)
 );
 
 -- 구매 상품 테이블

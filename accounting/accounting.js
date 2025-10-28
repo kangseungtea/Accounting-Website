@@ -1,9 +1,16 @@
 // 회계 관리 JavaScript
 let currentTab = 'overview';
+let revenueCalculator;
+let revenueUI;
 
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', function() {
     console.log('회계 관리 페이지 로드됨');
+    
+    // 모듈 초기화
+    revenueCalculator = new RevenueCalculator();
+    revenueUI = new RevenueUI();
+    
     loadOverviewData();
 });
 
@@ -45,6 +52,8 @@ function showTab(tabName) {
 // 개요 데이터 로드
 async function loadOverviewData() {
     try {
+        revenueUI.showLoading();
+        
         // 이번 달 수입 데이터 로드
         const revenueResponse = await fetch('/api/repairs?limit=10000');
         const revenueData = await revenueResponse.json();
@@ -54,24 +63,22 @@ async function loadOverviewData() {
         const expenseData = await expenseResponse.json();
         
         // 이번 달 데이터 필터링
-        const currentMonth = new Date();
-        const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-        const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+        const { startOfMonth, endOfMonth } = RevenueUtils.getCurrentMonthRange();
         
-        const monthlyRepairs = revenueData.repairs.filter(repair => {
-            const repairDate = new Date(repair.repair_date);
-            return repairDate >= startOfMonth && repairDate <= endOfMonth;
-        });
+        const monthlyRepairs = RevenueUtils.filterByDateRange(
+            revenueData.repairs, 
+            startOfMonth, 
+            endOfMonth
+        );
         
-        const monthlyPurchases = expenseData.purchases.filter(purchase => {
-            const purchaseDate = new Date(purchase.purchase_date);
-            return purchaseDate >= startOfMonth && purchaseDate <= endOfMonth;
-        });
+        const monthlyPurchases = RevenueUtils.filterByDateRange(
+            expenseData.purchases, 
+            startOfMonth, 
+            endOfMonth
+        );
         
-        // 수입 계산
-        const totalRevenue = monthlyRepairs.reduce((sum, repair) => {
-            return sum + (parseFloat(repair.total_cost) || 0);
-        }, 0);
+        // 매출 계산 (새로운 모듈 사용)
+        const revenueSummary = revenueCalculator.calculateFromRepairs(monthlyRepairs);
         
         // 지출 계산
         const totalExpenses = monthlyPurchases.reduce((sum, purchase) => {
@@ -79,28 +86,15 @@ async function loadOverviewData() {
         }, 0);
         
         // UI 업데이트
-        updateMonthlyRevenue(totalRevenue, monthlyRepairs.length);
+        revenueUI.updateMonthlyRevenue(revenueSummary.totalRevenue, revenueSummary.revenueCount);
         updateMonthlyExpenses(totalExpenses, monthlyPurchases.length);
         
     } catch (error) {
         console.error('개요 데이터 로드 오류:', error);
+        revenueUI.showError(error.message);
     }
 }
 
-// 월별 수입 업데이트
-function updateMonthlyRevenue(totalRevenue, count) {
-    const container = document.getElementById('monthlyRevenue');
-    container.innerHTML = `
-        <div class="summary-item">
-            <div class="summary-value revenue">${totalRevenue.toLocaleString()}원</div>
-            <div class="summary-label">총 수입</div>
-        </div>
-        <div class="summary-item">
-            <div class="summary-value revenue">${count}건</div>
-            <div class="summary-label">수입 건수</div>
-        </div>
-    `;
-}
 
 // 월별 지출 업데이트
 function updateMonthlyExpenses(totalExpenses, count) {

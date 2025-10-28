@@ -261,44 +261,13 @@ function calculateSummary(repairs, purchases) {
     console.log('수리 데이터:', repairs.length, '건');
     console.log('구매 데이터:', purchases.length, '건');
     
-    let totalRevenue = 0;
-    let totalRevenueVat = 0;
+    // 매출 계산 (새로운 모듈 사용)
+    const revenueCalculator = new RevenueCalculator();
+    const revenueSummary = revenueCalculator.calculateFromRepairs(repairs);
+    
     let totalExpense = 0;
     let totalExpenseVat = 0;
-    let revenueCount = 0;
     let expenseCount = 0;
-    
-    // 매출 계산 (수리 이력)
-    repairs.forEach((repair, index) => {
-        try {
-            const totalCost = parseFloat(repair.total_cost) || 0;
-            const vatOption = repair.vat_option || 'none';
-            
-            if (totalCost > 0) {
-                let supplyAmount, vatAmount;
-                if (vatOption === 'include' || vatOption === 'included') {
-                    supplyAmount = Math.round(totalCost / 1.1);
-                    vatAmount = totalCost - supplyAmount;
-                } else if (vatOption === 'exclude' || vatOption === 'excluded') {
-                    supplyAmount = totalCost;
-                    vatAmount = Math.round(totalCost * 0.1);
-                } else {
-                    supplyAmount = totalCost;
-                    vatAmount = 0;
-                }
-                
-                totalRevenue += supplyAmount;
-                totalRevenueVat += vatAmount;
-                revenueCount++;
-                
-                if (index < 3) { // 처음 3개만 로그
-                    console.log(`수리 ${index + 1}: 총액=${totalCost}, 부가세옵션=${vatOption}, 공급가액=${supplyAmount}, 부가세=${vatAmount}`);
-                }
-            }
-        } catch (error) {
-            console.error('수리 데이터 계산 오류:', error, repair);
-        }
-    });
     
     // 매입 계산 (구매 이력)
     purchases.forEach((purchase, index) => {
@@ -332,16 +301,16 @@ function calculateSummary(repairs, purchases) {
         }
     });
     
-    const netProfit = (totalRevenue + totalRevenueVat) - (totalExpense + totalExpenseVat);
-    const profitMargin = (totalRevenue + totalRevenueVat) > 0 ? Math.round((netProfit / (totalRevenue + totalRevenueVat)) * 100) : 0;
+    const netProfit = revenueSummary.totalRevenue - (totalExpense + totalExpenseVat);
+    const profitMargin = RevenueUtils.calculateProfitMargin(revenueSummary.totalRevenue, totalExpense + totalExpenseVat);
     
     const summary = {
-        totalRevenue: totalRevenue + totalRevenueVat,
+        totalRevenue: revenueSummary.totalRevenue,
         totalExpense: totalExpense + totalExpenseVat,
-        totalVat: totalRevenueVat + totalExpenseVat,
+        totalVat: revenueSummary.totalRevenueVat + totalExpenseVat,
         netProfit: netProfit,
         profitMargin: profitMargin,
-        revenueCount: revenueCount,
+        revenueCount: revenueSummary.revenueCount,
         expenseCount: expenseCount
     };
     
@@ -349,10 +318,17 @@ function calculateSummary(repairs, purchases) {
     return summary;
 }
 
-// 요약 카드 업데이트
+// 요약 카드 업데이트 (RevenueUI 모듈 사용)
 function updateSummaryCards(summary) {
-    document.getElementById('totalRevenue').textContent = summary.totalRevenue.toLocaleString() + '원';
-    document.getElementById('revenueCount').textContent = summary.revenueCount + '건';
+    // RevenueUI 모듈 사용
+    if (typeof RevenueUI !== 'undefined') {
+        const revenueUI = new RevenueUI();
+        revenueUI.updateSummaryCard(summary);
+    } else {
+        // 폴백: 직접 업데이트
+        document.getElementById('totalRevenue').textContent = summary.totalRevenue.toLocaleString() + '원';
+        document.getElementById('revenueCount').textContent = summary.revenueCount + '건';
+    }
     
     document.getElementById('totalExpense').textContent = summary.totalExpense.toLocaleString() + '원';
     document.getElementById('expenseCount').textContent = summary.expenseCount + '건';
@@ -396,6 +372,11 @@ function openSummaryDetailModal(type, title) {
     // 모달 HTML이 없으면 생성
     if (!document.getElementById('summaryDetailModal')) {
         createSummaryModal();
+    }
+    
+    // 날짜 범위 미리 설정
+    if (!window.currentStartDate || !window.currentEndDate) {
+        updateDateRange();
     }
     
     // 모달 표시
@@ -539,23 +520,51 @@ async function loadSummaryDetailData(type) {
     try {
         // 날짜 범위 설정
         if (!window.currentStartDate || !window.currentEndDate) {
+            console.log('날짜 범위 설정 중...');
             updateDateRange();
+            console.log('날짜 범위 설정 완료:', { startDate: window.currentStartDate, endDate: window.currentEndDate });
         }
         
-        const response = await fetch(`/api/summary-details/${type}?startDate=${window.currentStartDate}&endDate=${window.currentEndDate}`, {
+        // 날짜가 여전히 없으면 기본값 설정
+        if (!window.currentStartDate || !window.currentEndDate) {
+            console.warn('날짜 범위 설정 실패, 기본값 사용');
+            const today = new Date();
+            const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            window.currentStartDate = startDate.toISOString().split('T')[0];
+            window.currentEndDate = endDate.toISOString().split('T')[0];
+        }
+        
+        console.log('데이터 로드 시작:', { type, startDate: window.currentStartDate, endDate: window.currentEndDate });
+        
+        const url = `/api/summary-details/${type}?startDate=${window.currentStartDate}&endDate=${window.currentEndDate}`;
+        console.log('API URL:', url);
+        
+        const response = await fetch(url, {
             credentials: 'include'
         });
+        
+        console.log('API 응답 상태:', response.status);
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const result = await response.json();
+        console.log('API 응답 데이터:', result);
         
         if (result.success) {
             updateSummaryDetailTable(result.data, type);
-            updateSummaryDetailInfo(result.summary);
+            // summary 객체가 있으면 사용하고, 없으면 data에서 계산
+            if (result.summary) {
+                updateSummaryDetailInfo(result.summary);
+            } else {
+                // data에서 요약 정보 계산
+                const summary = calculateSummaryFromData(result.data);
+                updateSummaryDetailInfo(summary);
+            }
         } else {
+            console.error('API 오류:', result.message);
             showSummaryError(result.message || '데이터를 불러오는데 실패했습니다.');
         }
     } catch (error) {
@@ -564,101 +573,85 @@ async function loadSummaryDetailData(type) {
     }
 }
 
-// 상세 테이블 업데이트
+// 상세 테이블 업데이트 (DetailTable 모듈 사용)
 function updateSummaryDetailTable(data, type) {
+    // DetailTable 모듈이 로드될 때까지 대기
+    if (typeof DetailTable !== 'undefined') {
+        const detailTable = new DetailTable();
+        detailTable.updateDetailTable(data, type);
+    } else {
+        console.warn('DetailTable 모듈이 아직 로드되지 않았습니다. 1초 후 재시도합니다.');
+        setTimeout(() => {
+            if (typeof DetailTable !== 'undefined') {
+                const detailTable = new DetailTable();
+                detailTable.updateDetailTable(data, type);
+            } else {
+                console.error('DetailTable 모듈을 찾을 수 없습니다. 수동으로 테이블을 업데이트합니다.');
+                updateSummaryDetailTableFallback(data, type);
+            }
+        }, 1000);
+    }
+}
+
+// DetailTable 모듈이 없을 때의 대체 함수
+function updateSummaryDetailTableFallback(data, type) {
     const thead = document.getElementById('tableHead');
     const tbody = document.getElementById('tableBody');
     
-    if (!thead || !tbody) return;
-    
-    // 헤더 설정
-    const headers = getTableHeaders(type);
-    thead.innerHTML = headers.map(header => `<th style="padding: 10px; border: 1px solid #dee2e6;">${header}</th>`).join('');
-    
-    // 데이터 설정
-    if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${headers.length}" style="text-align: center; padding: 20px;">데이터가 없습니다.</td></tr>`;
+    if (!thead || !tbody) {
+        console.error('테이블 요소를 찾을 수 없습니다.');
         return;
     }
     
-    tbody.innerHTML = data.map(item => {
-        const cells = getTableCells(item, type);
-        return `<tr>${cells.join('')}</tr>`;
+    // 기본 헤더 설정
+    const headers = ['번호', '거래일', '거래코드', '고객명', '제품명', '수량', '단가', '총액', '상태'];
+    thead.innerHTML = headers.map(header => `<th style="padding: 10px; border: 1px solid #dee2e6;">${header}</th>`).join('');
+    
+    // 기본 데이터 설정
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px;">데이터가 없습니다.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = data.map((item, index) => {
+        const formatNumber = (num) => new Intl.NumberFormat('ko-KR').format(num || 0);
+        const formatDate = (date) => date ? new Date(date).toLocaleDateString('ko-KR') : '-';
+        
+        return `
+            <tr>
+                <td style="padding: 8px; border: 1px solid #dee2e6;">${index + 1}</td>
+                <td style="padding: 8px; border: 1px solid #dee2e6;">${formatDate(item.date)}</td>
+                <td style="padding: 8px; border: 1px solid #dee2e6;">${item.code || '-'}</td>
+                <td style="padding: 8px; border: 1px solid #dee2e6;">${item.customer || '-'}</td>
+                <td style="padding: 8px; border: 1px solid #dee2e6;">${item.product || '-'}</td>
+                <td style="padding: 8px; border: 1px solid #dee2e6;">${formatNumber(item.quantity)}</td>
+                <td style="padding: 8px; border: 1px solid #dee2e6;">${formatNumber(item.unitPrice)}원</td>
+                <td style="padding: 8px; border: 1px solid #dee2e6;">${formatNumber(item.totalAmount)}원</td>
+                <td style="padding: 8px; border: 1px solid #dee2e6;">${item.status || '-'}</td>
+            </tr>
+        `;
     }).join('');
 }
 
-// 테이블 헤더 가져오기
-function getTableHeaders(type) {
-    switch (type) {
-        case 'revenue':
-            return ['거래일', '거래코드', '고객명', '제품명', '수량', '단가', '총액', '상태'];
-        case 'expense':
-            return ['거래일', '거래코드', '공급업체', '제품명', '수량', '단가', '총액', '상태'];
-        case 'vat':
-            return ['거래일', '거래코드', '구분', '공급가액', '부가세', '총액', '상태'];
-        case 'net':
-            return ['거래일', '거래코드', '구분', '매출액', '매입액', '순이익', '마진율'];
-        default:
-            return ['거래일', '거래코드', '내용', '금액', '상태'];
-    }
-}
+// 테이블 헤더 가져오기 (AnalysisTable 모듈로 이동됨)
 
-// 테이블 셀 가져오기
-function getTableCells(item, type) {
-    const formatNumber = (num) => new Intl.NumberFormat('ko-KR').format(num || 0);
-    const formatDate = (date) => date ? new Date(date).toLocaleDateString('ko-KR') : '-';
-    const baseStyle = 'padding: 8px; border: 1px solid #dee2e6;';
+// 테이블 셀 가져오기 (AnalysisTable 모듈로 이동됨)
+
+// 데이터에서 요약 정보 계산
+function calculateSummaryFromData(data) {
+    if (!data || !Array.isArray(data)) {
+        return { totalAmount: 0, totalCount: 0, averageAmount: 0 };
+    }
     
-    const cellConfigs = {
-        revenue: [
-            { value: formatDate(item.date), style: baseStyle },
-            { value: item.code || '-', style: baseStyle },
-            { value: item.customer || '-', style: baseStyle },
-            { value: item.product || '-', style: baseStyle },
-            { value: `${item.quantity || 0}개`, style: `${baseStyle} text-align: center;` },
-            { value: `${formatNumber(item.unitPrice || 0)}원`, style: `${baseStyle} text-align: right;` },
-            { value: `${formatNumber(item.totalAmount || 0)}원`, style: `${baseStyle} text-align: right; color: #28a745; font-weight: bold;` },
-            { value: item.status || '완료', style: baseStyle }
-        ],
-        expense: [
-            { value: formatDate(item.date), style: baseStyle },
-            { value: item.code || '-', style: baseStyle },
-            { value: item.supplier || '-', style: baseStyle },
-            { value: item.product || '-', style: baseStyle },
-            { value: `${item.quantity || 0}개`, style: `${baseStyle} text-align: center;` },
-            { value: `${formatNumber(item.unitPrice || 0)}원`, style: `${baseStyle} text-align: right;` },
-            { value: `${formatNumber(item.totalAmount || 0)}원`, style: `${baseStyle} text-align: right; color: #dc3545; font-weight: bold;` },
-            { value: item.status || '완료', style: baseStyle }
-        ],
-        vat: [
-            { value: formatDate(item.date), style: baseStyle },
-            { value: item.code || '-', style: baseStyle },
-            { value: item.type || '-', style: baseStyle },
-            { value: `${formatNumber(item.supplyPrice || 0)}원`, style: `${baseStyle} text-align: right;` },
-            { value: `${formatNumber(item.vatAmount || 0)}원`, style: `${baseStyle} text-align: right;` },
-            { value: `${formatNumber(item.totalAmount || 0)}원`, style: `${baseStyle} text-align: right; font-weight: bold;` },
-            { value: item.status || '완료', style: baseStyle }
-        ],
-        net: [
-            { value: formatDate(item.date), style: baseStyle },
-            { value: item.code || '-', style: baseStyle },
-            { value: item.type || '-', style: baseStyle },
-            { value: `${formatNumber(item.revenue || 0)}원`, style: `${baseStyle} text-align: right; color: #28a745;` },
-            { value: `${formatNumber(item.expense || 0)}원`, style: `${baseStyle} text-align: right; color: #dc3545;` },
-            { value: `${formatNumber(item.netProfit || 0)}원`, style: `${baseStyle} text-align: right; font-weight: bold; color: ${(item.netProfit || 0) >= 0 ? '#28a745' : '#dc3545'};` },
-            { value: `${item.margin || 0}%`, style: `${baseStyle} text-align: center;` }
-        ]
+    const totalAmount = data.reduce((sum, item) => sum + (item.totalAmount || 0), 0);
+    const totalCount = data.length;
+    const averageAmount = totalCount > 0 ? Math.round(totalAmount / totalCount) : 0;
+    
+    return {
+        totalAmount,
+        totalCount,
+        averageAmount
     };
-    
-    const config = cellConfigs[type] || [
-        { value: formatDate(item.date), style: baseStyle },
-        { value: item.code || '-', style: baseStyle },
-        { value: item.description || '-', style: baseStyle },
-        { value: `${formatNumber(item.amount || 0)}원`, style: `${baseStyle} text-align: right;` },
-        { value: item.status || '완료', style: baseStyle }
-    ];
-    
-    return config.map(cell => `<td style="${cell.style}">${cell.value}</td>`);
 }
 
 // 요약 정보 업데이트
@@ -666,6 +659,15 @@ function updateSummaryDetailInfo(summary) {
     const totalAmount = document.getElementById('totalAmount');
     const totalCount = document.getElementById('totalCount');
     const averageAmount = document.getElementById('averageAmount');
+    
+    // summary 객체가 없거나 속성이 없을 때를 처리
+    if (!summary) {
+        console.warn('summary 객체가 없습니다.');
+        if (totalAmount) totalAmount.textContent = '0원';
+        if (totalCount) totalCount.textContent = '0건';
+        if (averageAmount) averageAmount.textContent = '0원';
+        return;
+    }
     
     if (totalAmount) totalAmount.textContent = new Intl.NumberFormat('ko-KR').format(summary.totalAmount || 0) + '원';
     if (totalCount) totalCount.textContent = (summary.totalCount || 0) + '건';
@@ -680,62 +682,14 @@ function showSummaryError(message) {
     }
 }
 
-// 분석 테이블 업데이트
+// 분석 테이블 업데이트 (SalesAnalysisTable 모듈 사용)
 function updateAnalysisTable(data) {
-    const tbody = document.getElementById('analysisTableBody');
-    
-    if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="loading">분석할 데이터가 없습니다.</td></tr>';
-        return;
+    if (typeof SalesAnalysisTable !== 'undefined') {
+        const salesAnalysisTable = new SalesAnalysisTable();
+        salesAnalysisTable.updateAnalysisTable(data);
+    } else {
+        console.error('SalesAnalysisTable 모듈을 찾을 수 없습니다.');
     }
-    
-    let html = '';
-    let totalSalesSupply = 0, totalSalesVat = 0, totalSalesAmount = 0;
-    let totalPurchaseSupply = 0, totalPurchaseVat = 0, totalPurchaseAmount = 0;
-    
-    data.forEach(item => {
-        const netAmount = item.sales.totalAmount - item.purchase.totalAmount;
-        const netClass = netAmount >= 0 ? 'positive' : 'negative';
-        
-        totalSalesSupply += item.sales.supplyAmount;
-        totalSalesVat += item.sales.vatAmount;
-        totalSalesAmount += item.sales.totalAmount;
-        totalPurchaseSupply += item.purchase.supplyAmount;
-        totalPurchaseVat += item.purchase.vatAmount;
-        totalPurchaseAmount += item.purchase.totalAmount;
-        
-        html += `
-            <tr>
-                <td>${item.period}</td>
-                <td class="number">${item.sales.supplyAmount.toLocaleString()}원</td>
-                <td class="number">${item.sales.vatAmount.toLocaleString()}원</td>
-                <td class="number">${item.sales.totalAmount.toLocaleString()}원</td>
-                <td class="number">${item.purchase.supplyAmount.toLocaleString()}원</td>
-                <td class="number">${item.purchase.vatAmount.toLocaleString()}원</td>
-                <td class="number">${item.purchase.totalAmount.toLocaleString()}원</td>
-                <td class="number ${netClass}">${netAmount.toLocaleString()}원</td>
-            </tr>
-        `;
-    });
-    
-    // 총계 행
-    const totalNet = totalSalesAmount - totalPurchaseAmount;
-    const totalNetClass = totalNet >= 0 ? 'positive' : 'negative';
-    
-    html += `
-        <tr class="total-row">
-            <td><strong>총계</strong></td>
-            <td class="number"><strong>${totalSalesSupply.toLocaleString()}원</strong></td>
-            <td class="number"><strong>${totalSalesVat.toLocaleString()}원</strong></td>
-            <td class="number"><strong>${totalSalesAmount.toLocaleString()}원</strong></td>
-            <td class="number"><strong>${totalPurchaseSupply.toLocaleString()}원</strong></td>
-            <td class="number"><strong>${totalPurchaseVat.toLocaleString()}원</strong></td>
-            <td class="number"><strong>${totalPurchaseAmount.toLocaleString()}원</strong></td>
-            <td class="number ${totalNetClass}"><strong>${totalNet.toLocaleString()}원</strong></td>
-        </tr>
-    `;
-    
-    tbody.innerHTML = html;
 }
 
 // 새로고침
@@ -966,7 +920,7 @@ function clearRegionSearch() {
 
 // 고객 상세보기
 function viewCustomerDetail(customerId) {
-    window.open(`customers/customer-detail.html?id=${customerId}`, '_blank');
+    window.open(`/customers/customer-detail.html?id=${customerId}`, '_blank');
 }
 
 // 전화걸기
@@ -1643,20 +1597,46 @@ function updateRepairStatusTable() {
     
     tbody.innerHTML = pageData.map(repair => `
         <tr>
-            <td style="text-align: center; font-weight: 600; color: #007bff;">${repair.customer_id || '-'}</td>
+            <td style="text-align: center; font-weight: 600; color: #007bff;">
+                <button onclick="goToCustomerDetail(${repair.customer_id})" 
+                        style="background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;"
+                        title="고객 상세 정보 보기">
+                    ${repair.id || repair.customer_id || '-'}
+                </button>
+            </td>
             <td style="text-align: center;">${formatRepairDate(repair.repair_date)}</td>
-            <td style="text-align: center;">${repair.customer_name || '-'}</td>
+            <td style="text-align: center;">
+                <a href="javascript:void(0)" 
+                   onclick="goToCustomerDetail(${repair.customer_id})" 
+                   style="color: #007bff; text-decoration: none; font-weight: 500;"
+                   title="고객 상세 정보 보기">
+                    ${repair.customer_name || '-'}
+                </a>
+            </td>
             <td style="text-align: center; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${repair.device_model || '-'}">${(repair.device_model || '-').length > 10 ? (repair.device_model || '-').substring(0, 10) + '...' : (repair.device_model || '-')}</td>
             <td style="text-align: left; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${repair.problem || '-'}">${repair.problem || '-'}</td>
             <td style="text-align: center;">${getRepairStatusBadge(repair.status)}</td>
-            <td style="text-align: right; font-weight: 600;">${formatRepairNumber(repair.repair_cost || 0)}원</td>
-            <td style="text-align: center;">${formatRepairDate(repair.completion_date)}</td>
+            <td style="text-align: right; font-weight: 600;">${formatRepairNumber(repair.total_cost || repair.repair_cost || 0)}원</td>
+            <td style="text-align: center;">${formatRepairDate(repair.completion_date || repair.repair_date)}</td>
             <td style="text-align: center;">
                 <button class="action-btn view" onclick="openRepairDetailModal(${repair.id})" title="상세보기">👁️</button>
                 <button class="action-btn edit" onclick="editRepair(${repair.id})" title="수정">✏️</button>
             </td>
         </tr>
     `).join('');
+}
+
+// 고객 상세 정보로 이동하는 함수
+function goToCustomerDetail(customerId) {
+    console.log('고객 상세 정보로 이동, customerId:', customerId);
+    
+    if (!customerId) {
+        alert('고객 ID가 없습니다.');
+        return;
+    }
+    
+    // 고객 상세 페이지로 이동
+    window.location.href = `/customers/customer-detail.html?id=${customerId}`;
 }
 
 /**

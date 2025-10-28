@@ -1,5 +1,24 @@
 // 수리 이력 관리 관련 함수들 (목록, 수정, 삭제, 상세보기)
 
+// URL에서 customerId 파라미터 가져오기
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const customerId = urlParams.get('customerId');
+    
+    if (customerId) {
+        console.log('URL에서 customerId 파라미터 발견:', customerId);
+        // currentCustomerId 설정
+        if (typeof window.currentCustomerId === 'undefined') {
+            window.currentCustomerId = customerId;
+        }
+        
+        // 고객별 수리 이력 필터링 적용
+        if (typeof loadRepairs === 'function') {
+            loadRepairs();
+        }
+    }
+});
+
 // currentCustomerId 전역 변수 확인
 if (typeof currentCustomerId === 'undefined') {
     console.error('currentCustomerId가 정의되지 않았습니다. customer-detail.js가 먼저 로드되어야 합니다.');
@@ -116,12 +135,36 @@ async function editRepair(repairId) {
             }
             
             // 부가세 옵션 로드
+            console.log('부가세 옵션 설정 시작, vatOption:', vatOption);
+            
+            // 모든 부가세 라디오 버튼 초기화
+            const allVatRadios = document.querySelectorAll('input[name="vatOption"]');
+            console.log('모든 부가세 라디오 버튼:', allVatRadios);
+            allVatRadios.forEach(radio => {
+                radio.checked = false;
+                console.log('라디오 버튼 초기화:', radio.value, radio.checked);
+            });
+            
+            // 선택된 부가세 옵션 설정
             const vatRadio = document.querySelector(`input[name="vatOption"][value="${vatOption}"]`);
-            console.log('부가세 라디오 버튼:', vatRadio, '값:', vatOption);
+            console.log('선택할 부가세 라디오 버튼:', vatRadio, '값:', vatOption);
             if (vatRadio) {
                 vatRadio.checked = true;
+                console.log('부가세 옵션 설정 완료:', vatOption, 'checked:', vatRadio.checked);
+                
+                // 부가세 옵션 설정 후 총 비용 업데이트
+                if (typeof window.updateTotalRepairCost === 'function') {
+                    console.log('updateTotalRepairCost 함수 호출 중...');
+                    window.updateTotalRepairCost();
+                } else {
+                    console.error('updateTotalRepairCost 함수를 찾을 수 없습니다.');
+                }
             } else {
                 console.error('부가세 라디오 버튼을 찾을 수 없습니다. 값:', vatOption);
+                console.log('사용 가능한 부가세 옵션들:');
+                allVatRadios.forEach(radio => {
+                    console.log('- value:', radio.value, 'checked:', radio.checked);
+                });
             }
             
             // 수정 모드임을 표시
@@ -760,7 +803,7 @@ function displayRepairs(repairs) {
     
     if (repairs.length === 0) {
         console.log('수리 이력이 없습니다.');
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #666;">수리 이력이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #666;">수리 이력이 없습니다.</td></tr>';
         return;
     }
     
@@ -803,10 +846,29 @@ function displayRepairs(repairs) {
         const totalCost = repair.totalCost || repair.total_cost || 0;
         
         row.innerHTML = `
+            <td style="text-align: center; white-space: nowrap; min-width: 80px;">
+                <button onclick="goToCustomerDetail(${repair.customerId || repair.customer_id})" 
+                        class="btn btn-sm btn-outline-primary" 
+                        title="고객 상세 정보 보기"
+                        style="padding: 4px 8px; font-size: 12px;">
+                    ${repair.id}
+                </button>
+            </td>
             <td style="white-space: nowrap;">${formatDate(repair.repairDate || repair.repair_date)}</td>
+            <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <a href="javascript:void(0)" 
+                   onclick="goToCustomerDetail(${repair.customerId || repair.customer_id})" 
+                   style="color: #007bff; text-decoration: none; font-weight: 500;"
+                   title="고객 상세 정보 보기">
+                    ${repair.customerName || repair.customer_name || '-'}
+                </a>
+            </td>
+            <td style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(repair.managementNumber || repair.management_number || '-').replace(/"/g, '&quot;')}">${repair.managementNumber || repair.management_number || '-'}</td>
             <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(repair.deviceModel || repair.device_model || '-').replace(/"/g, '&quot;')}">${repair.deviceModel || repair.device_model || '-'}</td>
-            <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(repair.problem || '-').replace(/"/g, '&quot;')}">${repair.problem || '-'}</td>
-            <td style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(repair.solution || '-').replace(/"/g, '&quot;')}">${repair.solution || '-'}</td>
+            <td style="text-align: center; white-space: nowrap;">
+                <span class="status-badge ${getStatusClass(repair.status)}">${repair.status || '-'}</span>
+            </td>
+            <td style="white-space: nowrap; font-size: 12px;">${repair.technician || '-'}</td>
             <td style="text-align: right; min-width: 120px;">
                 <div style="text-align: right;">
                     <div style="font-size: 11px; color: #666; margin-bottom: 1px;">
@@ -820,10 +882,6 @@ function displayRepairs(repairs) {
                     </div>
                 </div>
             </td>
-            <td style="text-align: center; white-space: nowrap;">
-                <span class="status-badge ${getStatusClass(repair.status)}">${repair.status || '-'}</span>
-            </td>
-            <td style="white-space: nowrap; font-size: 12px;">${repair.warranty || '-'}</td>
             <td style="text-align: center; white-space: nowrap;">
                 <button onclick="showRepairDetailModal(${JSON.stringify(repair).replace(/"/g, '&quot;')})" class="btn btn-sm btn-info" title="상세보기">상세</button>
                 <button onclick="editRepair(${repair.id})" class="btn btn-sm btn-warning" title="수정">수정</button>
@@ -917,17 +975,17 @@ function filterRepairs() {
     
     rows.forEach(row => {
         const cells = row.querySelectorAll('td');
-        if (cells.length < 7) return; // 헤더 행이 아닌 경우만 처리
+        if (cells.length < 8) return; // 헤더 행이 아닌 경우만 처리
         
-        const date = cells[0].textContent;
-        const model = cells[1].textContent.toLowerCase();
-        const problem = cells[2].textContent.toLowerCase();
-        const status = cells[3].textContent;
+        const date = cells[1].textContent;
+        const customerName = cells[2].textContent.toLowerCase();
+        const model = cells[4].textContent.toLowerCase();
+        const status = cells[5].textContent;
         
         let show = true;
         
         // 검색어 필터링
-        if (searchTerm && !model.includes(searchTerm) && !problem.includes(searchTerm)) {
+        if (searchTerm && !model.includes(searchTerm) && !customerName.includes(searchTerm)) {
             show = false;
         }
         
@@ -1088,6 +1146,19 @@ function showMessage(message, type) {
     }, 3000);
 }
 
+// 고객 상세 정보로 이동하는 함수
+function goToCustomerDetail(customerId) {
+    console.log('고객 상세 정보로 이동, customerId:', customerId);
+    
+    if (!customerId) {
+        showMessage('고객 ID가 없습니다.', 'error');
+        return;
+    }
+    
+    // 고객 상세 페이지로 이동
+    window.location.href = `../customers/customer-detail.html?id=${customerId}`;
+}
+
 // 함수들을 전역으로 노출
 window.loadRepairs = loadRepairs;
 window.showRepairDetailModal = showRepairDetailModal;
@@ -1098,6 +1169,7 @@ window.viewRepairDetail = viewRepairDetail;
 window.closeRepairDetailModal = closeRepairDetailModal;
 window.goBack = goBack;
 window.printRepairDetail = printRepairDetail;
+window.goToCustomerDetail = goToCustomerDetail;
 
 // URL 파라미터에서 수리 ID 가져오기
 function getRepairIdFromUrl() {

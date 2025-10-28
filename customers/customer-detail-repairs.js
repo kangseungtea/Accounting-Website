@@ -394,7 +394,7 @@ async function viewRepairDetail(repairId) {
                 vatAmount = totalCost - supplyAmount;
                 vatDescription = '부품비 + 인건비 (부가세 포함)';
             } else if (vatOption === 'excluded') {
-                // 부가세 미포함: 총액이 공급가액, 부가세 별도 계산
+                // 부가세 미포함: totalCost가 공급가액, 부가세 별도 계산
                 supplyAmount = totalCost;
                 vatAmount = Math.round(totalCost * 0.1);
                 vatDescription = '부품비 + 인건비 (부가세 별도)';
@@ -789,8 +789,10 @@ function updateRepairStatus(repairs) {
         warrantyElement.textContent = `${statusCounts['보증중']}건`;
     }
     
-    // 상태 카드에 클릭 이벤트 추가
-    addStatusCardClickEvents(repairs);
+    // 상태 카드에 클릭 이벤트 추가 (DOM 렌더링 완료 후)
+    setTimeout(() => {
+        addStatusCardClickEvents(repairs);
+    }, 100);
     
     console.log('✅ 수리 현황 업데이트 완료');
 }

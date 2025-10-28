@@ -150,14 +150,19 @@ function analyzeData(repairs, purchases) {
     // 기간별 그룹화
     const groupedData = groupDataByPeriod(repairs, purchases);
     
-    // 요약 데이터 계산
-    const salesSummary = calculateSalesSummary(repairs);
+    // 요약 데이터 계산 (새로운 모듈 사용)
+    const revenueCalculator = new RevenueCalculator();
+    const salesSummary = revenueCalculator.calculateFromRepairs(repairs);
     const purchaseSummary = calculatePurchaseSummary(purchases);
     
-    // UI 업데이트
-    updateSalesSummary(salesSummary);
+    // UI 업데이트 (새로운 모듈 사용)
+    const revenueUI = new RevenueUI();
+    revenueUI.updateSalesSummary(salesSummary);
     updatePurchaseSummary(purchaseSummary);
-    updateAnalysisTable(groupedData);
+    
+    // 분석 테이블 업데이트 (새로운 모듈 사용)
+    const salesAnalysisTable = new SalesAnalysisTable();
+    salesAnalysisTable.updateAnalysisTableForSalesPage(groupedData);
     
     analysisData = groupedData;
 }
@@ -271,42 +276,7 @@ function getPeriodKey(date) {
     }
 }
 
-// 매출 요약 계산
-function calculateSalesSummary(repairs) {
-    let totalSupplyAmount = 0;
-    let totalVatAmount = 0;
-    let totalAmount = 0;
-    let count = 0;
-    
-    repairs.forEach(repair => {
-        const totalCost = parseFloat(repair.total_cost) || 0;
-        const vatOption = repair.vat_option || 'none';
-        
-        let supplyAmount, vatAmount;
-        if (vatOption === 'include') {
-            supplyAmount = Math.round(totalCost / 1.1);
-            vatAmount = totalCost - supplyAmount;
-        } else if (vatOption === 'exclude') {
-            supplyAmount = totalCost;
-            vatAmount = Math.round(totalCost * 0.1);
-        } else {
-            supplyAmount = totalCost;
-            vatAmount = 0;
-        }
-        
-        totalSupplyAmount += supplyAmount;
-        totalVatAmount += vatAmount;
-        totalAmount += totalCost;
-        count++;
-    });
-    
-    return {
-        count,
-        supplyAmount: totalSupplyAmount,
-        vatAmount: totalVatAmount,
-        totalAmount: totalAmount
-    };
-}
+// 매출 요약 계산 (RevenueCalculator 모듈로 이동됨)
 
 // 매입 요약 계산
 function calculatePurchaseSummary(purchases) {
@@ -345,29 +315,7 @@ function calculatePurchaseSummary(purchases) {
     };
 }
 
-// 매출 요약 업데이트
-function updateSalesSummary(summary) {
-    const container = document.getElementById('salesSummary');
-    
-    container.innerHTML = `
-        <div class="summary-item">
-            <div class="summary-value revenue">${summary.count}</div>
-            <div class="summary-label">매출 건수</div>
-        </div>
-        <div class="summary-item">
-            <div class="summary-value revenue">${summary.supplyAmount.toLocaleString()}원</div>
-            <div class="summary-label">공급가액</div>
-        </div>
-        <div class="summary-item">
-            <div class="summary-value vat">${summary.vatAmount.toLocaleString()}원</div>
-            <div class="summary-label">부가세</div>
-        </div>
-        <div class="summary-item">
-            <div class="summary-value revenue">${summary.totalAmount.toLocaleString()}원</div>
-            <div class="summary-label">총금액</div>
-        </div>
-    `;
-}
+// 매출 요약 업데이트 (RevenueUI 모듈로 이동됨)
 
 // 매입 요약 업데이트
 function updatePurchaseSummary(summary) {
@@ -393,85 +341,8 @@ function updatePurchaseSummary(summary) {
     `;
 }
 
-// 분석 테이블 업데이트
-function updateAnalysisTable(data) {
-    const container = document.getElementById('analysisTable');
-    
-    if (data.length === 0) {
-        container.innerHTML = '<div class="empty-state">분석할 데이터가 없습니다.</div>';
-        return;
-    }
-    
-    // 총계 계산
-    const totals = data.reduce((acc, item) => {
-        acc.sales.supplyAmount += item.sales.supplyAmount;
-        acc.sales.vatAmount += item.sales.vatAmount;
-        acc.sales.totalAmount += item.sales.totalAmount;
-        acc.purchase.supplyAmount += item.purchase.supplyAmount;
-        acc.purchase.vatAmount += item.purchase.vatAmount;
-        acc.purchase.totalAmount += item.purchase.totalAmount;
-        return acc;
-    }, {
-        sales: { supplyAmount: 0, vatAmount: 0, totalAmount: 0 },
-        purchase: { supplyAmount: 0, vatAmount: 0, totalAmount: 0 }
-    });
-    
-    const netAmount = totals.sales.totalAmount - totals.purchase.totalAmount;
-    
-    let html = `
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>기간</th>
-                    <th class="number">매출 공급가액</th>
-                    <th class="number">매출 부가세</th>
-                    <th class="number">매출 총금액</th>
-                    <th class="number">매입 공급가액</th>
-                    <th class="number">매입 부가세</th>
-                    <th class="number">매입 총금액</th>
-                    <th class="number">순이익</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-    
-    data.forEach(item => {
-        const netAmount = item.sales.totalAmount - item.purchase.totalAmount;
-        const netClass = netAmount >= 0 ? 'positive' : 'negative';
-        
-        html += `
-            <tr>
-                <td>${item.period}</td>
-                <td class="number">${item.sales.supplyAmount.toLocaleString()}원</td>
-                <td class="number">${item.sales.vatAmount.toLocaleString()}원</td>
-                <td class="number">${item.sales.totalAmount.toLocaleString()}원</td>
-                <td class="number">${item.purchase.supplyAmount.toLocaleString()}원</td>
-                <td class="number">${item.purchase.vatAmount.toLocaleString()}원</td>
-                <td class="number">${item.purchase.totalAmount.toLocaleString()}원</td>
-                <td class="number ${netClass}">${netAmount.toLocaleString()}원</td>
-            </tr>
-        `;
-    });
-    
-    // 총계 행
-    const totalNetClass = netAmount >= 0 ? 'positive' : 'negative';
-    html += `
-            <tr class="total-row">
-                <td><strong>총계</strong></td>
-                <td class="number"><strong>${totals.sales.supplyAmount.toLocaleString()}원</strong></td>
-                <td class="number"><strong>${totals.sales.vatAmount.toLocaleString()}원</strong></td>
-                <td class="number"><strong>${totals.sales.totalAmount.toLocaleString()}원</strong></td>
-                <td class="number"><strong>${totals.purchase.supplyAmount.toLocaleString()}원</strong></td>
-                <td class="number"><strong>${totals.purchase.vatAmount.toLocaleString()}원</strong></td>
-                <td class="number"><strong>${totals.purchase.totalAmount.toLocaleString()}원</strong></td>
-                <td class="number ${totalNetClass}"><strong>${netAmount.toLocaleString()}원</strong></td>
-            </tr>
-        </tbody>
-    </table>
-    `;
-    
-    container.innerHTML = html;
-}
+// 분석 테이블 업데이트 (AnalysisTable 모듈로 이동됨)
+// 이제 analyzeData() 함수에서 직접 사용됩니다.
 
 // 필터 초기화
 function resetFilters() {

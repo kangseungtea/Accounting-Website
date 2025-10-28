@@ -11,17 +11,130 @@ window.currentCustomer = currentCustomer;
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
-    currentCustomerId = urlParams.get('id');
+    const customerId = urlParams.get('id');
+    const customerName = urlParams.get('name');
+    const transactionCode = urlParams.get('code');
     
-    if (currentCustomerId) {
+    console.log('URL 파라미터:', { customerId, customerName, transactionCode });
+    
+    if (customerId) {
+        currentCustomerId = customerId;
         loadCustomerData();
+    } else if (customerName) {
+        // 고객명으로 고객 검색
+        searchCustomerByName(customerName, transactionCode);
     } else {
-        showMessage('고객 ID가 없습니다.', 'error');
+        showMessage('고객 정보가 없습니다.', 'error');
         setTimeout(() => {
             window.location.href = 'customers.html';
         }, 2000);
     }
+    
+    // URL에 #repair-history가 있으면 수리 이력 탭 활성화
+    if (window.location.hash === '#repair-history') {
+        setTimeout(() => {
+            const repairTab = document.querySelector('button[onclick*="showRepairHistory"]');
+            if (repairTab) {
+                repairTab.click();
+                console.log('수리 이력 탭이 자동으로 활성화되었습니다.');
+            }
+        }, 1000); // 데이터 로드 후 실행
+    }
 });
+
+// 고객명으로 고객 검색
+async function searchCustomerByName(customerName, transactionCode = '') {
+    try {
+        console.log('고객명으로 검색:', { customerName, transactionCode });
+        
+        // 고객 검색 API 호출
+        const searchResponse = await fetch(`/api/customers/search?name=${encodeURIComponent(customerName)}`, {
+            credentials: 'include'
+        });
+        
+        if (!searchResponse.ok) {
+            throw new Error('고객 검색에 실패했습니다.');
+        }
+        
+        const searchData = await searchResponse.json();
+        console.log('고객 검색 결과:', searchData);
+        
+        if (searchData.customers && searchData.customers.length > 0) {
+            // 첫 번째 고객을 선택 (동일 이름이 여러 명인 경우)
+            const customer = searchData.customers[0];
+            currentCustomerId = customer.id;
+            
+            console.log('고객 ID 설정:', currentCustomerId);
+            
+            // 거래코드를 전역 변수로 저장 (데이터 로드 후 하이라이트용)
+            if (transactionCode) {
+                window.highlightTransactionCode = transactionCode;
+            }
+            
+            // 고객 데이터 로드
+            await loadCustomerData();
+        } else {
+            showMessage(`'${customerName}' 고객을 찾을 수 없습니다.`, 'error');
+            setTimeout(() => {
+                window.location.href = 'customers.html';
+            }, 2000);
+        }
+    } catch (error) {
+        console.error('고객 검색 오류:', error);
+        showMessage('고객 검색 중 오류가 발생했습니다.', 'error');
+        setTimeout(() => {
+            window.location.href = 'customers.html';
+        }, 2000);
+    }
+}
+
+// 특정 거래 하이라이트
+function highlightTransaction(transactionCode) {
+    console.log('거래 하이라이트 시작:', transactionCode);
+    
+    if (!transactionCode) {
+        console.log('거래코드가 없습니다.');
+        return;
+    }
+    
+    // 수리 이력에서 해당 거래 찾기
+    const repairRows = document.querySelectorAll('#repairsTable tbody tr');
+    console.log('수리 이력 행 수:', repairRows.length);
+    
+    repairRows.forEach((row, index) => {
+        const codeCell = row.querySelector('td:nth-child(1)'); // 거래코드가 첫 번째 컬럼
+        if (codeCell) {
+            const cellText = codeCell.textContent.trim();
+            console.log(`수리 이력 ${index}: ${cellText}`);
+            if (cellText === transactionCode) {
+                console.log('수리 이력에서 거래코드 일치:', transactionCode);
+                row.style.backgroundColor = '#fff3cd';
+                row.style.border = '2px solid #ffc107';
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    });
+    
+    // 구매 이력에서 해당 거래 찾기
+    const purchaseRows = document.querySelectorAll('#purchasesTable tbody tr');
+    console.log('구매 이력 행 수:', purchaseRows.length);
+    
+    purchaseRows.forEach((row, index) => {
+        const codeCell = row.querySelector('td:nth-child(1)'); // 거래코드가 첫 번째 컬럼
+        if (codeCell) {
+            const cellText = codeCell.textContent.trim();
+            console.log(`구매 이력 ${index}: ${cellText}`);
+            if (cellText === transactionCode) {
+                console.log('구매 이력에서 거래코드 일치:', transactionCode);
+                row.style.backgroundColor = '#fff3cd';
+                row.style.border = '2px solid #ffc107';
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    });
+    
+    console.log('거래 하이라이트 완료');
+}
 
 // 고객 데이터 로드
 async function loadCustomerData() {
@@ -92,6 +205,13 @@ async function loadCustomerData() {
             if (repairsData.success) {
                 displayRepairs(repairsData.data);
             }
+        }
+        
+        // 거래 하이라이트 (모든 데이터 로드 후 실행)
+        if (window.highlightTransactionCode) {
+            setTimeout(() => {
+                highlightTransaction(window.highlightTransactionCode);
+            }, 500); // 0.5초 후 실행하여 DOM이 완전히 렌더링된 후 하이라이트
         }
         
     } catch (error) {

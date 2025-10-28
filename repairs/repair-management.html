@@ -38,6 +38,7 @@
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th>번호</th>
                             <th>수리일</th>
                             <th>고객명</th>
                             <th>관리번호</th>
@@ -50,7 +51,7 @@
                     </thead>
                     <tbody id="repairsTableBody">
                         <tr>
-                            <td colspan="8" class="loading">수리 이력을 불러오는 중...</td>
+                            <td colspan="9" class="loading">수리 이력을 불러오는 중...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -191,12 +192,21 @@
                         <input type="number" id="totalCost" name="totalCost" min="0" step="100">
                     </div>
                     <div class="form-group">
-                        <label for="vatOption">부가세 옵션</label>
-                        <select id="vatOption" name="vatOption">
-                            <option value="included">포함</option>
-                            <option value="excluded">미포함</option>
-                            <option value="none">없음</option>
-                        </select>
+                        <label>부가세 설정</label>
+                        <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                                <input type="radio" name="vatOption" value="included" checked="">
+                                <span>부가세 포함</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                                <input type="radio" name="vatOption" value="excluded">
+                                <span>부가세 미포함</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                                <input type="radio" name="vatOption" value="none">
+                                <span>부가세 없음</span>
+                            </label>
+                        </div>
                     </div>
                 </form>
             </div>

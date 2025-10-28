@@ -410,7 +410,7 @@ function downloadCSV(csvContent, filename) {
 
 // 고객 상세보기
 function viewCustomerDetail(customerId) {
-    window.open(`customer-detail.html?id=${customerId}`, '_blank');
+    window.open(`/customers/customer-detail.html?id=${customerId}`, '_blank');
 }
 
 // 날짜 포맷팅

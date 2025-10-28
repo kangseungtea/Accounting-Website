@@ -131,9 +131,12 @@ function updateAmountCalculation() {
     let total = subtotal;
     
     if (taxOption === 'included') {
-        tax = Math.round(subtotal * 0.1);
+        // 부가세 포함: subtotal이 이미 부가세가 포함된 총액
+        const supplyAmount = Math.round(subtotal / 1.1);
+        tax = subtotal - supplyAmount;
         total = subtotal;
     } else if (taxOption === 'excluded') {
+        // 부가세 미포함: subtotal이 공급가액, 부가세 별도 계산
         tax = Math.round(subtotal * 0.1);
         total = subtotal + tax;
     }
@@ -342,6 +345,30 @@ async function addPurchase(event) {
     }
 }
 
+// 구매 이력 로딩
+async function loadPurchases() {
+    try {
+        console.log('구매 이력 로딩 시작...');
+        
+        const response = await fetch(`/api/purchases?customerId=${currentCustomerId}&limit=1000`, {
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            console.log('구매 이력 로딩 성공:', result.data.length, '건');
+            displayPurchases(result.data);
+        } else {
+            console.error('구매 이력 로딩 실패:', result.message);
+            showMessage('구매 이력을 불러오는데 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('구매 이력 로딩 오류:', error);
+        showMessage('구매 이력을 불러오는 중 오류가 발생했습니다.', 'error');
+    }
+}
+
 // 구매 이력 표시
 function displayPurchases(purchases) {
     console.log('구매 이력 표시 시작, 구매 건수:', purchases.length);
@@ -366,7 +393,7 @@ function displayPurchasesPage() {
     tbody.innerHTML = '';
     
     if (allPurchases.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #666;">구매 이력이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 40px; color: #666;">구매 이력이 없습니다.</td></tr>';
         updatePurchasePagination();
         return;
     }
@@ -413,15 +440,16 @@ function displayPurchasesPage() {
                     <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: left; font-size: 12px; max-width: 200px;">
                         ${item.product_name || item.name || '상품명 없음'}
                     </td>
+                    <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: right; font-weight: 600;">${(item.unit_price || 0).toLocaleString('ko-KR')}원</td>
                     <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: right;">${supplyAmount.toLocaleString('ko-KR')}원</td>
                     <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: right;">${taxAmount.toLocaleString('ko-KR')}원</td>
-                    <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: right; font-weight: bold; color: #2196F3;">${item.total_price.toLocaleString('ko-KR')}원</td>
+                    <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: right; font-weight: bold; color: #2196F3;">${(supplyAmount + taxAmount).toLocaleString('ko-KR')}원</td>
                     <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center;">${purchase.payment_method || '-'}</td>
                     <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center; font-weight: bold;">${item.quantity || 1}개</td>
                     <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center;">
-                        <button onclick="editProductPurchase(${purchase.id}, '${(item.product_name || item.name || '상품명 없음').replace(/'/g, "\\'")}', ${item.quantity || 1}, ${item.unit_price || 0}, ${item.total_price || 0})" style="background: #ffc107; color: black; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 3px;">수정</button>
-                        <button onclick="returnProduct(${purchase.id}, '${(item.product_name || item.name || '상품명 없음').replace(/'/g, "\\'")}', ${item.quantity || 1}, ${item.unit_price || 0}, ${item.total_price || 0})" style="background: #6c757d; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 3px;">반품</button>
-                        <button onclick="deletePurchase(${purchase.id})" style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">삭제</button>
+                        <button onclick="editProductPurchase(${purchase.id}, '${(item.product_name || item.name || '상품명 없음').replace(/'/g, "\\'")}', ${item.quantity || 1}, ${item.unit_price || 0}, ${supplyAmount + taxAmount})" style="background: #ffc107; color: black; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 3px;">수정</button>
+                        <button onclick="returnProduct(${purchase.id}, '${(item.product_name || item.name || '상품명 없음').replace(/'/g, "\\'")}', ${item.quantity || 1}, ${item.unit_price || 0}, ${supplyAmount + taxAmount})" style="background: #6c757d; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 3px;">반품</button>
+                        <button onclick="deleteProductFromPurchase(${purchase.id}, '${(item.product_name || item.name || '상품명 없음').replace(/'/g, "\\'")}')" style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">상품삭제</button>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -455,17 +483,19 @@ function displayPurchasesPage() {
                     ${purchase.type === '구매' ? '🛒' : purchase.type === '반품' ? '↩️' : '💰'} ${purchase.type}
                 </span>
             </td>
-                <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: left; font-size: 12px; max-width: 200px;">
-                    상품 정보 없음
-                </td>
+            <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: left; font-size: 12px; max-width: 200px;">
+                ${purchase.products || '상품 정보 없음'}
+            </td>
+            <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: right; font-weight: 600;">-</td>
             <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: right;">${supplyAmount.toLocaleString('ko-KR')}원</td>
             <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: right;">${taxAmount.toLocaleString('ko-KR')}원</td>
-            <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: right; font-weight: bold; color: #2196F3;">${purchase.total_amount.toLocaleString('ko-KR')}원</td>
+            <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: right; font-weight: bold; color: #2196F3;">${(supplyAmount + taxAmount).toLocaleString('ko-KR')}원</td>
             <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center;">${purchase.payment_method || '-'}</td>
             <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center; font-weight: bold;">${purchase.total_quantity || 0}개</td>
             <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center;">
-                <button onclick="viewPurchaseDetail(${purchase.id})" style="background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 5px;">상세</button>
-                <button onclick="deletePurchase(${purchase.id})" style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">삭제</button>
+                <button onclick="viewPurchaseDetail(${purchase.id})" style="background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 3px;">상세</button>
+                <button onclick="editPurchase(${purchase.id})" style="background: #ffc107; color: black; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 3px;">수정</button>
+                <button onclick="returnPurchase(${purchase.id})" style="background: #6c757d; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">반품</button>
             </td>
         `;
         tbody.appendChild(row);
@@ -924,20 +954,72 @@ async function viewPurchaseDetail(purchaseId) {
                                 <tbody>
             `;
             
-            purchase.items.forEach(item => {
+            // 개별 상품들을 표시
+            if (purchase.items && purchase.items.length > 0) {
+                purchase.items.forEach((item, index) => {
+                    detailHTML += `
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #ddd;">
+                                <strong>${item.product_name || '상품명 없음'}</strong>
+                                ${item.product_code ? `<br><small style="color: #666;">코드: ${item.product_code}</small>` : ''}
+                            </td>
+                            <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">
+                                <span style="background: #e3f2fd; padding: 4px 8px; border-radius: 4px; font-weight: bold;">${item.quantity}개</span>
+                            </td>
+                            <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">
+                                <strong>${(item.unit_price || 0).toLocaleString('ko-KR')}원</strong>
+                            </td>
+                            <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">
+                                <strong style="color: #2196F3;">${(item.total_price || 0).toLocaleString('ko-KR')}원</strong>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } else {
                 detailHTML += `
                     <tr>
-                        <td style="padding: 10px; border: 1px solid #ddd;">${item.product_name}</td>
-                        <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${item.quantity}개</td>
-                        <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">${item.unit_price.toLocaleString('ko-KR')}원</td>
-                        <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">${item.total_price.toLocaleString('ko-KR')}원</td>
-                                        </tr>
+                        <td colspan="4" style="padding: 20px; text-align: center; color: #666;">
+                            상품 정보가 없습니다.
+                        </td>
+                    </tr>
                 `;
-            });
+            }
+            
+            // 총합 계산
+            const totalQuantity = purchase.items ? purchase.items.reduce((sum, item) => sum + (item.quantity || 0), 0) : 0;
+            const totalAmount = purchase.items ? purchase.items.reduce((sum, item) => sum + (item.total_price || 0), 0) : 0;
             
             detailHTML += `
                                 </tbody>
+                                <tfoot style="background: #f8f9fa; font-weight: bold;">
+                                    <tr>
+                                        <td style="padding: 15px; border: 1px solid #ddd; text-align: right;" colspan="3">
+                                            <strong>총 합계:</strong>
+                                        </td>
+                                        <td style="padding: 15px; border: 1px solid #ddd; text-align: right; color: #2196F3; font-size: 16px;">
+                                            <strong>${totalAmount.toLocaleString('ko-KR')}원</strong>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 10px; border: 1px solid #ddd; text-align: right;" colspan="3">
+                                            <strong>총 수량:</strong>
+                                        </td>
+                                        <td style="padding: 10px; border: 1px solid #ddd; text-align: right; color: #666;">
+                                            <strong>${totalQuantity}개</strong>
+                                        </td>
+                                    </tr>
+                                </tfoot>
                             </table>
+                            
+                            <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                                <h4 style="margin: 0 0 10px 0; color: #333;">구매 요약</h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+                                    <div><strong>총 상품 수:</strong> ${purchase.items ? purchase.items.length : 0}종</div>
+                                    <div><strong>총 수량:</strong> ${totalQuantity}개</div>
+                                    <div><strong>총 금액:</strong> ${totalAmount.toLocaleString('ko-KR')}원</div>
+                                    <div><strong>평균 단가:</strong> ${totalQuantity > 0 ? Math.round(totalAmount / totalQuantity).toLocaleString('ko-KR') : 0}원</div>
+                                </div>
+                            </div>
                         </div>
             `;
             
@@ -970,9 +1052,40 @@ async function viewPurchaseDetail(purchaseId) {
     }
 }
 
-// 구매 이력 삭제
+// 개별 상품 삭제
+async function deleteProductFromPurchase(purchaseId, productName) {
+    if (!confirm(`"${productName}" 상품을 구매 이력에서 삭제하시겠습니까?\n\n이 작업은 해당 상품만 삭제하고, 다른 상품들은 유지됩니다.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/purchases/${purchaseId}/product`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({ productName })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            showMessage('상품이 성공적으로 삭제되었습니다.', 'success');
+            loadCustomerData(); // 고객 데이터 다시 로드
+            // 페이지네이션을 첫 페이지로 리셋
+            currentPurchasePage = 1;
+        } else {
+            showMessage('상품 삭제에 실패했습니다: ' + result.message, 'error');
+        }
+    } catch (error) {
+        console.error('상품 삭제 오류:', error);
+        showMessage('상품 삭제 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 구매 이력 삭제 (전체)
 async function deletePurchase(purchaseId) {
-    if (!confirm('정말로 이 구매 이력을 삭제하시겠습니까?')) {
+    if (!confirm('정말로 이 구매 이력을 전체 삭제하시겠습니까?\n\n이 작업은 해당 구매코드의 모든 상품이 삭제됩니다.')) {
         return;
     }
     
@@ -1119,6 +1232,54 @@ async function processReturn(purchaseId, originalProductName) {
     } catch (error) {
         console.error('반품 처리 오류:', error);
         showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 구매 이력 전체 반품 처리
+async function returnPurchase(purchaseId) {
+    try {
+        console.log('구매 이력 반품 처리:', purchaseId);
+        
+        // 구매 정보 조회
+        const response = await fetch(`/api/purchases/${purchaseId}`);
+        const result = await response.json();
+        
+        if (!result.success) {
+            showMessage('구매 정보를 불러오는데 실패했습니다.', 'error');
+            return;
+        }
+        
+        const purchase = result.data;
+        
+        // 반품 확인
+        if (!confirm(`구매 이력을 반품하시겠습니까?\n구매코드: ${purchase.purchase_code}\n총 금액: ${purchase.total_amount.toLocaleString('ko-KR')}원`)) {
+            return;
+        }
+        
+        // 반품 처리 API 호출
+        const returnResponse = await fetch('/api/purchases/return', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                purchaseId: purchaseId,
+                reason: '전체 반품'
+            })
+        });
+        
+        const returnResult = await returnResponse.json();
+        
+        if (returnResult.success) {
+            showMessage('반품이 완료되었습니다.', 'success');
+            loadPurchases(); // 구매 이력 새로고침
+        } else {
+            showMessage(returnResult.message || '반품 처리에 실패했습니다.', 'error');
+        }
+        
+    } catch (error) {
+        console.error('구매 이력 반품 오류:', error);
+        showMessage('반품 처리 중 오류가 발생했습니다.', 'error');
     }
 }
 

@@ -7,14 +7,36 @@ let editingProductId = null;
 
 // 페이지 로드 시 초기화
 window.addEventListener('load', async () => {
-    await checkUserStatus();
-    await loadCategoryData();
+    console.log('🚀 페이지 로드 시작');
     
-    // 제품 페이지 로딩 시 자동으로 모든 재고 동기화
-    await syncAllStockSilently();
-    
-    loadProducts();
-    
+    try {
+        console.log('👤 사용자 상태 확인 중...');
+        const userStatus = await checkUserStatus();
+        if (!userStatus) {
+            console.log('❌ 사용자 인증 실패, 로그인 페이지로 이동');
+            return;
+        }
+        console.log('✅ 사용자 상태 확인 완료');
+        
+        console.log('📁 카테고리 데이터 로드 중...');
+        try {
+            await loadCategoryData();
+            console.log('✅ 카테고리 데이터 로드 완료');
+        } catch (error) {
+            console.warn('⚠️ 카테고리 데이터 로드 실패, 계속 진행:', error);
+        }
+        
+        console.log('📦 제품 목록 로드 시작...');
+        await loadProducts();
+        console.log('✅ 제품 목록 로드 완료');
+        
+        console.log('🔄 재고 동기화 백그라운드 실행...');
+        syncAllStockSilently();
+        
+        console.log('🎉 페이지 초기화 완료!');
+    } catch (error) {
+        console.error('💥 페이지 초기화 오류:', error);
+    }
 });
 
 // 모든 제품 재고 조용히 동기화 (알림 없이)
@@ -51,18 +73,29 @@ async function checkUserStatus() {
         
         if (result.success && result.isLoggedIn) {
             document.getElementById('userName').textContent = result.user.username;
+            return true;
         } else {
+            console.log('❌ 사용자 인증 실패:', result.message);
             window.location.href = '../shared/index.html';
+            return false;
         }
     } catch (error) {
+        console.error('❌ 사용자 상태 확인 오류:', error);
         window.location.href = '../shared/index.html';
+        return false;
     }
 }
 
 // 제품 목록 로드
 async function loadProducts(page = 1) {
     try {
-        console.log('제품 목록 로드 시작, 페이지:', page);
+        console.log('🚀 제품 목록 로드 시작, 페이지:', page);
+        console.log('🔍 현재 필터 상태:', {
+            search: currentSearch,
+            category: currentCategory,
+            status: currentStatus
+        });
+        
         const params = new URLSearchParams({
             page: page,
             limit: 10,
@@ -71,13 +104,13 @@ async function loadProducts(page = 1) {
             status: currentStatus
         });
         
-        console.log('API 요청 URL:', `/api/products?${params}`);
+        console.log('📡 API 요청 URL:', `/api/products?${params}`);
         const response = await fetch(`/api/products?${params}`, {
             credentials: 'include'
         });
         
-        console.log('API 응답 상태:', response.status);
-        console.log('API 응답 Content-Type:', response.headers.get('content-type'));
+        console.log('📊 API 응답 상태:', response.status);
+        console.log('📋 API 응답 Content-Type:', response.headers.get('content-type'));
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -86,43 +119,46 @@ async function loadProducts(page = 1) {
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
             const text = await response.text();
-            console.error('JSON이 아닌 응답:', text.substring(0, 200));
+            console.error('❌ JSON이 아닌 응답:', text.substring(0, 200));
             throw new Error('서버에서 JSON이 아닌 응답을 반환했습니다.');
         }
         
         const result = await response.json();
-        console.log('API 응답 데이터:', result);
+        console.log('📦 API 응답 데이터:', result);
         
         if (result.success) {
-            console.log('제품 데이터 개수:', result.data.length);
+            console.log('✅ 제품 데이터 개수:', result.data.length);
+            console.log('📄 페이지네이션 정보:', result.pagination);
             displayProducts(result.data);
             displayPagination(result.pagination);
             currentPage = page;
+            console.log('🎉 제품 목록 로드 완료!');
         } else {
-            console.error('API 오류:', result.message);
+            console.error('❌ API 오류:', result.message);
             showMessage('제품 목록을 불러오는데 실패했습니다.', 'error');
         }
     } catch (error) {
-        console.error('제품 로드 오류:', error);
+        console.error('💥 제품 로드 오류:', error);
         showMessage('네트워크 오류가 발생했습니다.', 'error');
     }
 }
 
 // 제품 목록 표시 (상태별 그룹화)
 function displayProducts(products) {
-    console.log('displayProducts 호출됨, 제품 수:', products.length);
+    console.log('🎨 displayProducts 호출됨, 제품 수:', products.length);
     const tbody = document.getElementById('productsTableBody');
-    console.log('tbody 요소:', tbody);
+    console.log('🔍 tbody 요소:', tbody);
     
     if (!tbody) {
-        console.error('productsTableBody 요소를 찾을 수 없습니다!');
+        console.error('❌ productsTableBody 요소를 찾을 수 없습니다!');
         return;
     }
     
+    console.log('🧹 tbody 내용 초기화');
     tbody.innerHTML = '';
     
     if (products.length === 0) {
-        console.log('제품 데이터가 없음, 빈 메시지 표시');
+        console.log('📭 제품 데이터가 없음, 빈 메시지 표시');
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #666;">등록된 제품이 없습니다.</td></tr>';
         return;
     }
@@ -274,13 +310,34 @@ function searchProducts() {
 
 // 카테고리 데이터 로드 (카테고리 매니저 사용)
 async function loadCategoryData() {
-    await window.categoryManager.loadCategoryData();
-    updateMainCategoryFilter();
+    try {
+        if (typeof window.categoryManager === 'undefined') {
+            console.warn('⚠️ categoryManager가 아직 로드되지 않았습니다. 잠시 후 다시 시도합니다.');
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        if (typeof window.categoryManager !== 'undefined') {
+            await window.categoryManager.loadCategoryData();
+            updateMainCategoryFilter();
+        } else {
+            console.warn('⚠️ categoryManager를 사용할 수 없습니다. 카테고리 필터를 건너뜁니다.');
+        }
+    } catch (error) {
+        console.error('❌ 카테고리 데이터 로드 오류:', error);
+    }
 }
 
 // 제품 목록 필터의 대분류 옵션 업데이트
 function updateMainCategoryFilter() {
-    window.categoryManager.updateMainCategoryFilter();
+    try {
+        if (typeof window.categoryManager !== 'undefined') {
+            window.categoryManager.updateMainCategoryFilter();
+        } else {
+            console.warn('⚠️ categoryManager를 사용할 수 없습니다. 카테고리 필터 업데이트를 건너뜁니다.');
+        }
+    } catch (error) {
+        console.error('❌ 카테고리 필터 업데이트 오류:', error);
+    }
 }
 
 // 하위 카테고리 업데이트
@@ -503,7 +560,7 @@ async function debugStock(productId) {
         console.log('재고 디버깅 결과:', result);
         
         if (result.success) {
-            const { product, repairParts, summary } = result.data;
+            const { product, breakdown } = result;
             
             let debugHTML = `
                 <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 20px 0;">
@@ -513,58 +570,21 @@ async function debugStock(productId) {
                             <h5 style="color: #6c757d; margin-bottom: 10px;">제품 정보</h5>
                             <div style="font-size: 14px; line-height: 1.6;">
                                 <div><strong>제품명:</strong> ${product.name}</div>
-                                <div><strong>제품코드:</strong> ${product.product_code}</div>
-                                <div><strong>현재 재고:</strong> <span style="color: ${product.stock_quantity === 0 ? '#dc3545' : '#28a745'}; font-weight: bold;">${product.stock_quantity}개</span></div>
+                                <div><strong>현재 재고:</strong> <span style="color: ${product.currentStock === 0 ? '#dc3545' : '#28a745'}; font-weight: bold;">${product.currentStock}개</span></div>
+                                <div><strong>계산된 재고:</strong> <span style="color: ${product.calculatedStock === 0 ? '#dc3545' : '#28a745'}; font-weight: bold;">${product.calculatedStock}개</span></div>
                             </div>
                         </div>
                         <div>
                             <h5 style="color: #6c757d; margin-bottom: 10px;">재고 분석</h5>
                             <div style="font-size: 14px; line-height: 1.6;">
-                                <div><strong>수리부품 사용량:</strong> <span style="color: #ff9800;">${summary.totalUsedInRepairs}개</span></div>
-                                <div><strong>남은 재고:</strong> <span style="color: ${summary.remainingStock >= 0 ? '#28a745' : '#dc3545'}; font-weight: bold;">${summary.remainingStock}개</span></div>
-                                <div><strong>상태:</strong> <span style="color: ${summary.remainingStock >= 0 ? '#28a745' : '#dc3545'}; font-weight: bold;">${summary.remainingStock >= 0 ? '정상' : '부족'}</span></div>
+                                <div><strong>구매량:</strong> <span style="color: #28a745;">${breakdown.totalPurchased}개</span></div>
+                                <div><strong>판매량:</strong> <span style="color: #dc3545;">${breakdown.totalSold}개</span></div>
+                                <div><strong>반품량:</strong> <span style="color: #17a2b8;">${breakdown.totalReturned}개</span></div>
+                                <div><strong>수리부품 사용량:</strong> <span style="color: #ff9800;">${breakdown.totalUsedInRepairs}개</span></div>
+                                <div><strong>재고 차이:</strong> <span style="color: ${product.stockDifference === 0 ? '#28a745' : '#dc3545'}; font-weight: bold;">${product.stockDifference}개</span></div>
                             </div>
                         </div>
                     </div>
-            `;
-            
-            if (repairParts.length > 0) {
-                debugHTML += `
-                    <div style="margin-top: 20px;">
-                        <h5 style="color: #6c757d; margin-bottom: 10px;">수리 부품 사용 이력 (${repairParts.length}건)</h5>
-                        <div style="max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 4px;">
-                `;
-                
-                repairParts.forEach(part => {
-                    debugHTML += `
-                        <div style="padding: 8px 12px; border-bottom: 1px solid #f8f9fa; font-size: 12px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <span style="background: #ff9800; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-right: 8px;">수리부품</span>
-                                    <span style="font-weight: 600;">${part.name}</span>
-                                </div>
-                                <div style="text-align: right;">
-                                    <div style="color: #6c757d;">${new Date(part.repair_date).toLocaleDateString('ko-KR')}</div>
-                                    <div style="font-weight: bold; color: #ff9800;">${part.quantity}개</div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                debugHTML += `
-                        </div>
-                    </div>
-                `;
-            } else {
-                debugHTML += `
-                    <div style="margin-top: 20px; text-align: center; color: #6c757d; padding: 20px;">
-                        수리 부품 사용 이력이 없습니다.
-                    </div>
-                `;
-            }
-            
-            debugHTML += `
                 </div>
             `;
             
@@ -585,8 +605,9 @@ async function debugStock(productId) {
                 if (detailContent) {
                     detailContent.appendChild(debugDiv);
                 }
+            } else {
+                showMessage('제품 상세 모달을 찾을 수 없습니다.', 'error');
             }
-            
         } else {
             showMessage('재고 디버깅에 실패했습니다: ' + (result.message || '알 수 없는 오류'), 'error');
         }
@@ -618,13 +639,10 @@ async function syncStock(productId) {
         console.log('재고 동기화 결과:', result);
         
         if (result.success) {
-            const { productName, oldStock, newStock, stockChange, changeType, totalPurchased, totalSold, totalUsedInRepairs } = result.data;
+            const { productName, calculatedStock, purchases, repairs } = result;
             
-            // 변화량에 따른 메시지 색상 결정
-            const changeIcon = stockChange > 0 ? '📈' : stockChange < 0 ? '📉' : '➡️';
-            const changeText = stockChange !== 0 ? ` (${changeType}: ${Math.abs(stockChange)}개)` : ' (변화없음)';
-            
-            showMessage(`${changeIcon} 재고가 동기화되었습니다!\n${productName}: ${oldStock}개 → ${newStock}개${changeText}\n\n📊 상세 내역:\n• 구매: ${totalPurchased}개\n• 판매: ${totalSold}개\n• 수리부품사용: ${totalUsedInRepairs}개`, 'success');
+            // 재고 동기화 완료 메시지
+            showMessage(`✅ 재고가 동기화되었습니다!\n${productName}: ${calculatedStock}개\n\n📊 상세 내역:\n• 구매 이력: ${purchases}건\n• 수리 이력: ${repairs}건`, 'success');
             
             // 제품 상세 정보 새로고침
             await viewProductDetail(productId);
@@ -760,10 +778,7 @@ function closeCategoryModal() {
     window.categoryManager.closeCategoryModal();
 }
 
-// 카테고리 데이터 로드 (category-manager.js 사용)
-async function loadCategoryData() {
-    return await window.categoryManager.loadCategoryData();
-}
+// 카테고리 데이터 로드 함수는 위에 정의됨
 
 // 카테고리 폼 업데이트 (category-manager.js 사용)
 function updateCategoryForm() {
@@ -796,23 +811,7 @@ function updateCategoryData(newCategoryData) {
     console.log('카테고리 데이터 업데이트는 category-manager.js에서 처리됩니다.');
 }
 
-// 페이지 로드 시 초기화
-document.addEventListener('DOMContentLoaded', async function() {
-    try {
-        // 카테고리 매니저 초기화
-        await window.categoryManager.loadCategoryData();
-        
-        // 카테고리 필터 초기화
-        window.categoryManager.updateMainCategoryFilter();
-        
-        // 제품 목록 로드
-        await loadProducts();
-        
-        console.log('페이지 초기화 완료');
-    } catch (error) {
-        console.error('페이지 초기화 오류:', error);
-    }
-});
+// DOMContentLoaded 이벤트 리스너는 제거됨 (window.load와 중복)
 
 // 로그아웃
 async function logout() {
@@ -852,6 +851,14 @@ async function viewProductDetail(productId) {
         
         if (result.success) {
             const product = result.data;
+            console.log('🔍 제품 데이터 상세:', product);
+            console.log('💰 가격 정보:', {
+                price: product.price,
+                priceType: typeof product.price,
+                isNull: product.price === null,
+                isUndefined: product.price === undefined,
+                isNaN: isNaN(product.price)
+            });
             const stockQuantity = product.stock_quantity || product.stockQuantity || 0;
             
             // 재고 수량에 따른 색상 결정
@@ -994,8 +1001,10 @@ async function viewProductDetail(productId) {
                 modal.style.display = 'flex';
                 console.log('✅ 제품 상세 모달 표시됨');
                 
-                // 구매 이력 로드
-                loadProductPurchases(productId);
+                // DOM 렌더링 완료 후 구매 이력 로드
+                setTimeout(() => {
+                    loadProductPurchases(productId);
+                }, 100);
             } else {
                 console.error('❌ productDetailModal 요소를 찾을 수 없습니다!');
                 showMessage('제품 상세 모달을 찾을 수 없습니다.', 'error');
@@ -1080,6 +1089,7 @@ async function loadProductPurchases(productId) {
                                     <th style="padding: 16px 12px; text-align: left; border: 1px solid #dee2e6; font-weight: 600; color: #495057;">구매일</th>
                                     <th style="padding: 16px 12px; text-align: left; border: 1px solid #dee2e6; font-weight: 600; color: #495057;">고객명</th>
                                     <th style="padding: 16px 12px; text-align: center; border: 1px solid #dee2e6; font-weight: 600; color: #495057;">구분</th>
+                                    <th style="padding: 16px 12px; text-align: right; border: 1px solid #dee2e6; font-weight: 600; color: #495057;">단가</th>
                                     <th style="padding: 16px 12px; text-align: right; border: 1px solid #dee2e6; font-weight: 600; color: #495057;">공급가액</th>
                                     <th style="padding: 16px 12px; text-align: right; border: 1px solid #dee2e6; font-weight: 600; color: #495057;">부가세</th>
                                     <th style="padding: 16px 12px; text-align: right; border: 1px solid #dee2e6; font-weight: 600; color: #495057;">총금액</th>
@@ -1090,8 +1100,8 @@ async function loadProductPurchases(productId) {
                             </thead>
                             <tbody>
                                 ${purchases.map(purchase => {
-                                    // 구매/판매 이력인 경우
-                                    if (purchase.source_type === '구매/판매') {
+                                    // 구매/판매 이력인 경우 (API에서 직접 반환하는 데이터)
+                                    if (purchase.type === '구매' || purchase.type === '판매') {
                                         const typeClass = purchase.type === '판매' ? 'type-sale' : 
                                                         purchase.type === '구매' ? 'type-purchase' : 'type-preorder';
                                         const typeIcon = purchase.type === '판매' ? '💰' : 
@@ -1109,9 +1119,10 @@ async function loadProductPurchases(productId) {
                                                         ${typeIcon} ${purchase.type}
                                                     </span>
                                                 </td>
-                                                <td style="padding: 16px 12px; border: 1px solid #dee2e6; text-align: right; color: #495057;">${formatNumber(Math.round(purchase.total_amount / 1.1))}원</td>
-                                                <td style="padding: 16px 12px; border: 1px solid #dee2e6; text-align: right; color: #495057;">${formatNumber(purchase.total_amount - Math.round(purchase.total_amount / 1.1))}원</td>
-                                                <td style="padding: 16px 12px; border: 1px solid #dee2e6; text-align: right; font-weight: bold; color: #2196F3;">${formatNumber(purchase.total_amount)}원</td>
+                                                <td style="padding: 16px 12px; border: 1px solid #dee2e6; text-align: right; font-weight: 600; color: #495057;">${formatNumber(purchase.unit_price || 0)}원</td>
+                                                <td style="padding: 16px 12px; border: 1px solid #dee2e6; text-align: right; color: #495057;">${formatNumber(Math.round(purchase.total_price / 1.1))}원</td>
+                                                <td style="padding: 16px 12px; border: 1px solid #dee2e6; text-align: right; color: #495057;">${formatNumber(purchase.total_price - Math.round(purchase.total_price / 1.1))}원</td>
+                                                <td style="padding: 16px 12px; border: 1px solid #dee2e6; text-align: right; font-weight: bold; color: #2196F3;">${formatNumber(purchase.total_price)}원</td>
                                                 <td style="padding: 16px 12px; border: 1px solid #dee2e6; text-align: center; color: #6c757d;">${purchase.payment_method || '-'}</td>
                                                 <td style="padding: 16px 12px; border: 1px solid #dee2e6; text-align: center; font-weight: bold; color: #495057;">${formatNumber(purchase.quantity || 0)}개</td>
                                                 <td style="padding: 16px 12px; border: 1px solid #dee2e6; text-align: center;">
@@ -1132,6 +1143,7 @@ async function loadProductPurchases(productId) {
                                                         🔧 수리부품
                                                     </span>
                                                 </td>
+                                                <td style="padding: 16px 12px; border: 1px solid #dee2e6; text-align: right; font-weight: 600; color: #495057;">${formatNumber(purchase.unit_price || 0)}원</td>
                                                 <td style="padding: 16px 12px; border: 1px solid #dee2e6; text-align: right; color: #495057;">${formatNumber(Math.round(purchase.total_price / 1.1))}원</td>
                                                 <td style="padding: 16px 12px; border: 1px solid #dee2e6; text-align: right; color: #495057;">${formatNumber(purchase.total_price - Math.round(purchase.total_price / 1.1))}원</td>
                                                 <td style="padding: 16px 12px; border: 1px solid #dee2e6; text-align: right; font-weight: bold; color: #ff9800;">${formatNumber(purchase.total_price)}원</td>
