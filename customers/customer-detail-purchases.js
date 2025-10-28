@@ -344,7 +344,56 @@ function displayPurchases(purchases) {
         return;
     }
     
+    // 각 구매의 상품별로 개별 행 생성
     purchases.forEach(purchase => {
+        // 구매 상품들을 개별적으로 표시
+        if (purchase.items && purchase.items.length > 0) {
+            purchase.items.forEach((item, itemIndex) => {
+                const row = document.createElement('tr');
+                
+                // 부가세 계산 (tax_option에 따라 다르게 처리)
+                let supplyAmount, taxAmount;
+                
+                if (purchase.tax_option === 'included') {
+                    // 부가세 포함: 총액에서 부가세를 제외한 공급가액 계산
+                    supplyAmount = Math.round(item.total_price / 1.1);
+                    taxAmount = item.total_price - supplyAmount;
+                } else if (purchase.tax_option === 'excluded') {
+                    // 부가세 미포함: 총액이 공급가액, 부가세 별도 계산
+                    supplyAmount = item.total_price;
+                    taxAmount = Math.round(item.total_price * 0.1);
+                } else {
+                    // 부가세 없음: 총액이 공급가액, 부가세 0
+                    supplyAmount = item.total_price;
+                    taxAmount = 0;
+                }
+                
+                row.innerHTML = `
+                    <td style="padding: 12px 8px; border: 1px solid #dee2e6; font-weight: 600;">${purchase.purchase_code || '-'}</td>
+                    <td style="padding: 12px 8px; border: 1px solid #dee2e6;">${purchase.purchase_date ? new Date(purchase.purchase_date).toLocaleDateString('ko-KR') : '-'}</td>
+                    <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center;">
+                        <span style="background: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                            🛒 ${purchase.type}
+                        </span>
+                    </td>
+                    <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: left; font-size: 12px; max-width: 200px;">
+                        ${item.product_name || item.name || '상품명 없음'}
+                    </td>
+                    <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: right;">${supplyAmount.toLocaleString('ko-KR')}원</td>
+                    <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: right;">${taxAmount.toLocaleString('ko-KR')}원</td>
+                    <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: right; font-weight: bold; color: #2196F3;">${item.total_price.toLocaleString('ko-KR')}원</td>
+                    <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center;">${purchase.payment_method || '-'}</td>
+                    <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center; font-weight: bold;">${item.quantity || 1}개</td>
+                    <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center;">
+                        <button onclick="viewProductPurchaseHistory('${(item.product_name || item.name || '상품명 없음').replace(/'/g, "\\'")}')" style="background: #28a745; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 3px;">상품이력</button>
+                        <button onclick="editProductPurchase(${purchase.id}, '${(item.product_name || item.name || '상품명 없음').replace(/'/g, "\\'")}', ${item.quantity || 1}, ${item.unit_price || 0}, ${item.total_price || 0})" style="background: #ffc107; color: black; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 3px;">수정</button>
+                        <button onclick="deletePurchase(${purchase.id})" style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">삭제</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        } else {
+            // 상품 정보가 없는 경우 기존 방식으로 표시
         const row = document.createElement('tr');
         
         // 부가세 계산 (tax_option에 따라 다르게 처리)
@@ -372,6 +421,9 @@ function displayPurchases(purchases) {
                     🛒 ${purchase.type}
                 </span>
             </td>
+                <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: left; font-size: 12px; max-width: 200px;">
+                    상품 정보 없음
+                </td>
             <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: right;">${supplyAmount.toLocaleString('ko-KR')}원</td>
             <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: right;">${taxAmount.toLocaleString('ko-KR')}원</td>
             <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: right; font-weight: bold; color: #2196F3;">${purchase.total_amount.toLocaleString('ko-KR')}원</td>
@@ -383,7 +435,338 @@ function displayPurchases(purchases) {
             </td>
         `;
         tbody.appendChild(row);
+        }
     });
+}
+
+// 특정 상품의 구매 이력 조회
+async function viewProductPurchaseHistory(productName) {
+    try {
+        console.log('상품 구매 이력 조회:', productName);
+        
+        const response = await fetch(`/api/purchases/product-history?productName=${encodeURIComponent(productName)}`, {
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const purchases = result.data;
+            
+            let detailHTML = `
+                <div style="padding: 20px;">
+                    <h3>상품 구매 이력: ${productName}</h3>
+                    <div style="margin-bottom: 20px;">
+                        <strong>총 구매 건수:</strong> ${purchases.length}건<br>
+                        <strong>총 구매 수량:</strong> ${purchases.reduce((sum, p) => sum + (p.quantity || 0), 0)}개<br>
+                        <strong>총 구매 금액:</strong> ${purchases.reduce((sum, p) => sum + (p.total_price || 0), 0).toLocaleString('ko-KR')}원
+                    </div>
+                    <h4>구매 이력 목록</h4>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="padding: 10px; border: 1px solid #ddd;">구매일</th>
+                                <th style="padding: 10px; border: 1px solid #ddd;">구매코드</th>
+                                <th style="padding: 10px; border: 1px solid #ddd;">고객명</th>
+                                <th style="padding: 10px; border: 1px solid #ddd;">수량</th>
+                                <th style="padding: 10px; border: 1px solid #ddd;">단가</th>
+                                <th style="padding: 10px; border: 1px solid #ddd;">금액</th>
+                                <th style="padding: 10px; border: 1px solid #ddd;">결제방법</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            purchases.forEach(purchase => {
+                detailHTML += `
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${purchase.purchase_date ? new Date(purchase.purchase_date).toLocaleDateString('ko-KR') : '-'}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${purchase.purchase_code || '-'}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${purchase.customer_name || '-'}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${purchase.quantity || 0}개</td>
+                        <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">${(purchase.unit_price || 0).toLocaleString('ko-KR')}원</td>
+                        <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">${(purchase.total_price || 0).toLocaleString('ko-KR')}원</td>
+                        <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${purchase.payment_method || '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            detailHTML += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            // 모달 생성 및 표시
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.style.display = 'flex';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>상품 구매 이력</h2>
+                        <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        ${detailHTML}
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-outline" onclick="this.closest('.modal').remove()">닫기</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+        } else {
+            showMessage('상품 구매 이력을 불러오는데 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('상품 구매 이력 조회 오류:', error);
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 특정 상품 구매 수정
+async function editProductPurchase(purchaseId, productName, quantity, unitPrice, totalPrice) {
+    try {
+        console.log('상품 구매 수정:', { purchaseId, productName, quantity, unitPrice, totalPrice });
+        
+        // 상품 수정 모달 생성
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h2>상품 구매 수정</h2>
+                    <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="editProductPurchaseForm">
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">상품명</label>
+                            <input type="text" id="editProductName" value="${productName}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" readonly>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                            <div>
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600;">수량</label>
+                                <input type="number" id="editProductQuantity" value="${quantity}" min="1" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600;">단가 (원)</label>
+                                <input type="number" id="editProductUnitPrice" value="${unitPrice}" min="0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">총 금액 (원)</label>
+                            <input type="number" id="editProductTotalPrice" value="${totalPrice}" min="0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" readonly>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                            <h4 style="margin: 0 0 10px 0; color: #495057;">자동 계산</h4>
+                            <p style="margin: 0; font-size: 14px; color: #6c757d;">수량 × 단가 = 총 금액으로 자동 계산됩니다.</p>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="updateProductPurchase(${purchaseId}, '${productName.replace(/'/g, "\\'")}')" class="btn btn-primary">수정</button>
+                    <button type="button" onclick="this.closest('.modal').remove()" class="btn btn-outline">취소</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // 자동 계산 이벤트 리스너 추가
+        const quantityInput = document.getElementById('editProductQuantity');
+        const unitPriceInput = document.getElementById('editProductUnitPrice');
+        const totalPriceInput = document.getElementById('editProductTotalPrice');
+        
+        function calculateTotal() {
+            const qty = parseInt(quantityInput.value) || 0;
+            const price = parseInt(unitPriceInput.value) || 0;
+            const total = qty * price;
+            totalPriceInput.value = total;
+        }
+        
+        quantityInput.addEventListener('input', calculateTotal);
+        unitPriceInput.addEventListener('input', calculateTotal);
+        
+    } catch (error) {
+        console.error('상품 구매 수정 오류:', error);
+        showMessage('상품 구매 수정 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 상품 구매 업데이트
+async function updateProductPurchase(purchaseId, originalProductName) {
+    try {
+        const productName = document.getElementById('editProductName').value;
+        const quantity = parseInt(document.getElementById('editProductQuantity').value);
+        const unitPrice = parseInt(document.getElementById('editProductUnitPrice').value);
+        const totalPrice = parseInt(document.getElementById('editProductTotalPrice').value);
+        
+        if (!productName || quantity <= 0 || unitPrice < 0 || totalPrice < 0) {
+            showMessage('올바른 값을 입력해주세요.', 'error');
+            return;
+        }
+        
+        const response = await fetch(`/api/purchases/${purchaseId}/product`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                originalProductName,
+                productName,
+                quantity,
+                unitPrice,
+                totalPrice
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('상품 구매가 수정되었습니다.', 'success');
+            document.querySelector('.modal').remove();
+            loadCustomerData(); // 구매 이력 새로고침
+        } else {
+            showMessage(result.message || '상품 구매 수정에 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('상품 구매 업데이트 오류:', error);
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 구매 이력 수정
+async function editPurchase(purchaseId) {
+    try {
+        console.log('구매 이력 수정:', purchaseId);
+        
+        const response = await fetch(`/api/purchases/${purchaseId}`, {
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const purchase = result.data;
+            
+            // 수정 모달 생성
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.style.display = 'flex';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 800px;">
+                    <div class="modal-header">
+                        <h2>구매 이력 수정</h2>
+                        <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editPurchaseForm">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">구매코드</label>
+                                    <input type="text" id="editPurchaseCode" value="${purchase.purchase_code || ''}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" readonly>
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">구매일</label>
+                                    <input type="date" id="editPurchaseDate" value="${purchase.purchase_date ? purchase.purchase_date.split('T')[0] : ''}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">구분</label>
+                                    <select id="editPurchaseType" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                        <option value="구매" ${purchase.type === '구매' ? 'selected' : ''}>구매</option>
+                                        <option value="판매" ${purchase.type === '판매' ? 'selected' : ''}>판매</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">결제방법</label>
+                                    <select id="editPaymentMethod" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                        <option value="현금" ${purchase.payment_method === '현금' ? 'selected' : ''}>현금</option>
+                                        <option value="카드" ${purchase.payment_method === '카드' ? 'selected' : ''}>카드</option>
+                                        <option value="계좌이체" ${purchase.payment_method === '계좌이체' ? 'selected' : ''}>계좌이체</option>
+                                        <option value="기타" ${purchase.payment_method === '기타' ? 'selected' : ''}>기타</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">상태</label>
+                                    <select id="editPurchaseStatus" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                        <option value="완료" ${purchase.status === '완료' ? 'selected' : ''}>완료</option>
+                                        <option value="진행중" ${purchase.status === '진행중' ? 'selected' : ''}>진행중</option>
+                                        <option value="취소" ${purchase.status === '취소' ? 'selected' : ''}>취소</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">부가세 옵션</label>
+                                    <select id="editTaxOption" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                        <option value="included" ${purchase.tax_option === 'included' ? 'selected' : ''}>부가세 포함</option>
+                                        <option value="excluded" ${purchase.tax_option === 'excluded' ? 'selected' : ''}>부가세 미포함</option>
+                                        <option value="none" ${purchase.tax_option === 'none' ? 'selected' : ''}>부가세 없음</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600;">메모</label>
+                                <textarea id="editPurchaseNotes" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; height: 80px;">${purchase.notes || ''}</textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" onclick="updatePurchase(${purchaseId})" class="btn btn-primary">수정</button>
+                        <button type="button" onclick="this.closest('.modal').remove()" class="btn btn-outline">취소</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+        } else {
+            showMessage('구매 이력을 불러오는데 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('구매 이력 수정 오류:', error);
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 구매 이력 업데이트
+async function updatePurchase(purchaseId) {
+    try {
+        const formData = {
+            purchase_date: document.getElementById('editPurchaseDate').value,
+            type: document.getElementById('editPurchaseType').value,
+            payment_method: document.getElementById('editPaymentMethod').value,
+            status: document.getElementById('editPurchaseStatus').value,
+            tax_option: document.getElementById('editTaxOption').value,
+            notes: document.getElementById('editPurchaseNotes').value
+        };
+        
+        const response = await fetch(`/api/purchases/${purchaseId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(formData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('구매 이력이 수정되었습니다.', 'success');
+            document.querySelector('.modal').remove();
+            loadCustomerData(); // 구매 이력 새로고침
+        } else {
+            showMessage(result.message || '구매 이력 수정에 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('구매 이력 업데이트 오류:', error);
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
 }
 
 // 구매 이력 상세보기

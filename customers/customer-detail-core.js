@@ -214,14 +214,10 @@ function showTab(tabName) {
     event.target.classList.add('active');
     document.getElementById(tabName + 'Tab').classList.add('active');
     
-    // 수리 이력 탭인 경우 통계 업데이트
+    // 수리 이력 탭인 경우 통계 업데이트 (자동 호출 제거)
     if (tabName === 'repairs') {
-        console.log('📊 수리 이력 탭 활성화됨, 통계 업데이트 중...');
-        setTimeout(() => {
-            if (typeof window.loadRepairs === 'function') {
-                window.loadRepairs();
-            }
-        }, 100);
+        console.log('📊 수리 이력 탭 활성화됨 - 자동 로드 비활성화됨');
+        // 자동 로드 제거 - 사용자가 직접 상세 버튼을 클릭할 때만 로드
     }
 }
 

@@ -270,11 +270,27 @@ app.get('/api/purchases', requireAuth, (req, res) => {
     query += ' GROUP BY p.id ORDER BY p.purchase_date DESC LIMIT ? OFFSET ?';
     params.push(parseInt(limit), offset);
     
-    db.all(query, params, (err, purchases) => {
+    db.all(query, params, async (err, purchases) => {
         if (err) {
             console.error('구매 이력 조회 오류:', err.message);
             res.status(500).json({ success: false, message: '구매 이력 조회에 실패했습니다.' });
             return;
+        }
+        
+        // 각 구매의 상품 정보 조회
+        for (let purchase of purchases) {
+            try {
+                const items = await new Promise((resolve, reject) => {
+                    db.all('SELECT * FROM purchase_items WHERE purchase_id = ?', [purchase.id], (err, items) => {
+                        if (err) reject(err);
+                        else resolve(items);
+                    });
+                });
+                purchase.items = items;
+            } catch (error) {
+                console.error('구매 상품 조회 오류:', error);
+                purchase.items = [];
+            }
         }
         
         // 전체 개수 조회
@@ -305,6 +321,35 @@ app.get('/api/purchases', requireAuth, (req, res) => {
                 }
             });
         });
+    });
+});
+
+// 특정 상품의 구매 이력 조회 API
+app.get('/api/purchases/product-history', requireAuth, (req, res) => {
+    const { productName } = req.query;
+    
+    if (!productName) {
+        res.status(400).json({ success: false, message: '상품명이 필요합니다.' });
+        return;
+    }
+    
+    const query = `
+        SELECT p.*, pi.quantity, pi.unit_price, pi.total_price, c.name as customer_name
+        FROM purchases p
+        JOIN purchase_items pi ON p.id = pi.purchase_id
+        LEFT JOIN customers c ON p.customer_id = c.id
+        WHERE pi.product_name = ?
+        ORDER BY p.purchase_date DESC
+    `;
+    
+    db.all(query, [productName], (err, purchases) => {
+        if (err) {
+            console.error('상품 구매 이력 조회 오류:', err.message);
+            res.status(500).json({ success: false, message: '상품 구매 이력 조회에 실패했습니다.' });
+            return;
+        }
+        
+        res.json({ success: true, data: purchases });
     });
 });
 
@@ -341,6 +386,81 @@ app.get('/api/purchases/:id', requireAuth, (req, res) => {
             
             purchase.items = items;
             res.json({ success: true, data: purchase });
+        });
+    });
+});
+
+// 구매 이력 수정 API
+app.put('/api/purchases/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    const { purchase_date, type, payment_method, status, tax_option, notes } = req.body;
+    
+    const query = `
+        UPDATE purchases 
+        SET purchase_date = ?, type = ?, payment_method = ?, status = ?, tax_option = ?, notes = ?
+        WHERE id = ?
+    `;
+    
+    db.run(query, [purchase_date, type, payment_method, status, tax_option, notes, id], function(err) {
+        if (err) {
+            console.error('구매 이력 수정 오류:', err.message);
+            res.status(500).json({ success: false, message: '구매 이력 수정에 실패했습니다.' });
+            return;
+        }
+        
+        if (this.changes === 0) {
+            res.status(404).json({ success: false, message: '구매 이력을 찾을 수 없습니다.' });
+            return;
+        }
+        
+        res.json({ success: true, message: '구매 이력이 수정되었습니다.' });
+    });
+});
+
+// 특정 상품 구매 수정 API
+app.put('/api/purchases/:id/product', requireAuth, (req, res) => {
+    const { id } = req.params;
+    const { originalProductName, productName, quantity, unitPrice, totalPrice } = req.body;
+    
+    // 먼저 해당 구매의 상품 정보를 업데이트
+    const updateProductQuery = `
+        UPDATE purchase_items 
+        SET product_name = ?, quantity = ?, unit_price = ?, total_price = ?
+        WHERE purchase_id = ? AND product_name = ?
+    `;
+    
+    db.run(updateProductQuery, [productName, quantity, unitPrice, totalPrice, id, originalProductName], function(err) {
+        if (err) {
+            console.error('상품 구매 수정 오류:', err.message);
+            res.status(500).json({ success: false, message: '상품 구매 수정에 실패했습니다.' });
+            return;
+        }
+        
+        if (this.changes === 0) {
+            res.status(404).json({ success: false, message: '해당 상품을 찾을 수 없습니다.' });
+            return;
+        }
+        
+        // 구매의 총 금액을 다시 계산
+        db.all('SELECT SUM(total_price) as total FROM purchase_items WHERE purchase_id = ?', [id], (err, result) => {
+            if (err) {
+                console.error('총 금액 계산 오류:', err.message);
+                res.status(500).json({ success: false, message: '총 금액 계산에 실패했습니다.' });
+                return;
+            }
+            
+            const newTotalAmount = result[0].total || 0;
+            
+            // 구매의 총 금액 업데이트
+            db.run('UPDATE purchases SET total_amount = ? WHERE id = ?', [newTotalAmount, id], (err) => {
+                if (err) {
+                    console.error('구매 총 금액 업데이트 오류:', err.message);
+                    res.status(500).json({ success: false, message: '구매 총 금액 업데이트에 실패했습니다.' });
+                    return;
+                }
+                
+                res.json({ success: true, message: '상품 구매가 수정되었습니다.' });
+            });
         });
     });
 });
@@ -575,8 +695,8 @@ app.get('/api/customers', requireAuth, (req, res) => {
     const params = [];
     
     if (search) {
-        query += ` AND (c.name LIKE ? OR c.phone LIKE ? OR c.email LIKE ?)`;
-        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+        query += ` AND (c.name LIKE ? OR c.company LIKE ? OR c.phone LIKE ? OR c.email LIKE ?)`;
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
     
     if (status) {
@@ -597,8 +717,8 @@ app.get('/api/customers', requireAuth, (req, res) => {
             const countParams = [];
             
             if (search) {
-                countQuery += ` AND (name LIKE ? OR phone LIKE ? OR email LIKE ?)`;
-                countParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
+                countQuery += ` AND (name LIKE ? OR company LIKE ? OR phone LIKE ? OR email LIKE ?)`;
+                countParams.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
             }
             
             if (status) {
@@ -1073,8 +1193,28 @@ app.put('/api/products/:id', requireAuth, (req, res) => {
         description 
     } = req.body;
     
+    // 디버깅: 받은 데이터 확인
+    console.log('🔍 제품 수정 API - 받은 데이터:');
+    console.log('  - id:', id);
+    console.log('  - name:', name);
+    console.log('  - productCode:', productCode);
+    console.log('  - mainCategory:', mainCategory);
+    console.log('  - subCategory:', subCategory);
+    console.log('  - stockQuantity:', stockQuantity);
+    console.log('  - 전체 body:', req.body);
+    
     if (!name || !mainCategory || !subCategory) {
+        console.log('❌ 필수 필드 누락:', { name: !!name, mainCategory: !!mainCategory, subCategory: !!subCategory });
         return res.status(400).json({ success: false, message: '제품명, 대분류, 중분류는 필수입니다.' });
+    }
+    
+    // 제품 코드가 없거나 빈 문자열이면 자동 생성
+    let finalProductCode = productCode;
+    if (!finalProductCode || finalProductCode.trim() === '') {
+        const timestamp = Date.now().toString().slice(-6);
+        const categoryCode = mainCategory.substring(0, 2).toUpperCase();
+        finalProductCode = `${categoryCode}${timestamp}`;
+        console.log('🔍 자동 생성된 제품 코드:', finalProductCode);
     }
     
     const query = `
@@ -1085,7 +1225,7 @@ app.put('/api/products/:id', requireAuth, (req, res) => {
     `;
     
     db.run(query, [
-        productCode || '', 
+        finalProductCode, 
         name, 
         brand || '', 
         mainCategory, 
@@ -1452,27 +1592,51 @@ app.get('/api/repairs/:id', requireAuth, (req, res) => {
 // 수리 이력 수정 API
 app.put('/api/repairs/:id', requireAuth, (req, res) => {
     const { id } = req.params;
-    const { deviceModel, problem, solution, status, warranty, technician, totalCost, vatOption, parts, labor } = req.body;
+    const { 
+        device_model, 
+        problem, 
+        solution, 
+        status, 
+        warranty, 
+        technician, 
+        total_cost, 
+        vat_option, 
+        repair_date,
+        notes,
+        parts, 
+        labor 
+    } = req.body;
     
     console.log('🔧 수리 이력 수정 요청 받음 - ID:', id);
     console.log('📋 요청 데이터:', JSON.stringify(req.body, null, 2));
     console.log('🔍 필수 필드 검증:');
-    console.log('  - deviceModel:', deviceModel, '(존재:', !!deviceModel, ')');
+    console.log('  - device_model:', device_model, '(존재:', !!device_model, ')');
     console.log('  - problem:', problem, '(존재:', !!problem, ')');
     
-    if (!deviceModel || !problem) {
-        console.error('❌ 필수 필드 누락 - deviceModel:', !!deviceModel, 'problem:', !!problem);
+    if (!device_model || !problem) {
+        console.error('❌ 필수 필드 누락 - device_model:', !!device_model, 'problem:', !!problem);
         return res.status(400).json({ success: false, message: '모델명과 문제는 필수입니다.' });
     }
     
     const query = `
         UPDATE repairs 
         SET device_model = ?, problem = ?, solution = ?, status = ?, warranty = ?, 
-            technician = ?, total_cost = ?, vat_option = ?
+            technician = ?, total_cost = ?, vat_option = ?, repair_date = ?, notes = ?
         WHERE id = ?
     `;
-    const params = [deviceModel, problem, solution || '', status || '진행중', 
-                   warranty || '', technician || '', totalCost || 0, vatOption || 'included', id];
+    const params = [
+        device_model, 
+        problem, 
+        solution || '', 
+        status || '진행중', 
+        warranty || '', 
+        technician || '', 
+        total_cost || 0, 
+        vat_option || 'included',
+        repair_date || new Date().toISOString().split('T')[0],
+        notes || '',
+        id
+    ];
     
     console.log('💾 데이터베이스 업데이트 쿼리 실행:');
     console.log('  - 쿼리:', query);

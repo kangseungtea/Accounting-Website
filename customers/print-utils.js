@@ -8,6 +8,15 @@
  */
 function printRepairDetail(repairData) {
     console.log('🖨️ 프린트 시작:', repairData);
+    console.log('🖨️ 데이터 타입:', typeof repairData);
+    console.log('🖨️ 데이터가 null/undefined인가?', repairData == null);
+    console.log('🖨️ 데이터 키들:', repairData ? Object.keys(repairData) : 'N/A');
+    
+    if (!repairData) {
+        console.error('❌ repairData가 null 또는 undefined입니다.');
+        alert('수리 데이터가 없습니다. 먼저 수리 이력을 선택해주세요.');
+        return;
+    }
     
     // 프린트 창 생성 (A4 비율)
     const printWindow = window.open('', '_blank', 'width=794,height=1123');
@@ -370,11 +379,13 @@ function populatePrintData(printWindow, repairData) {
  */
 function extractRepairDataFromModal(modal) {
     if (!modal) {
-        console.error('모달 요소를 찾을 수 없습니다.');
+        console.error('❌ 모달 요소를 찾을 수 없습니다.');
         return {};
     }
     
     console.log('🔍 모달에서 데이터 추출 중...');
+    console.log('🔍 모달 요소:', modal);
+    console.log('🔍 모달 ID:', modal.id);
     
     const data = {
         repairDate: modal.querySelector('#detailRepairDate')?.textContent || '-',
@@ -404,58 +415,115 @@ function extractRepairDataFromModal(modal) {
         }
     }
     
-    // 부품 목록 처리 - 실제 HTML 테이블 추출
-    const partsList = modal.querySelector('#detailParts');
-    if (partsList) {
-        const partsContent = partsList.innerHTML;
-        if (partsContent && partsContent.trim() !== '' && !partsContent.includes('사용된 부품이 없습니다')) {
-            data.partsList = partsContent;
+    // 부품 목록 처리 - 실제 데이터베이스에서 가져온 데이터 사용
+    if (window.currentRepairData && window.currentRepairData.parts && Array.isArray(window.currentRepairData.parts)) {
+        const parts = window.currentRepairData.parts;
+        if (parts.length > 0) {
+            const partsHtml = parts.map(part => {
+                const quantity = part.quantity || 1;
+                const unitPrice = part.unit_price || part.unitPrice || 0;
+                const totalPrice = part.total_price || part.totalPrice || (quantity * unitPrice);
+                
+                return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                    <strong>${part.name || '부품명 없음'}</strong> - ${quantity}개 × ${unitPrice.toLocaleString('ko-KR')}원 = ${totalPrice.toLocaleString('ko-KR')}원
+                </div>`;
+            }).join('');
+            data.partsList = partsHtml;
+            
+            // 부품 총액 계산
+            data.partsTotal = parts.reduce((sum, part) => {
+                const quantity = part.quantity || 1;
+                const unitPrice = part.unit_price || part.unitPrice || 0;
+                const totalPrice = part.total_price || part.totalPrice || (quantity * unitPrice);
+                return sum + totalPrice;
+            }, 0);
         } else {
             data.partsList = '사용된 부품이 없습니다.';
-        }
-    } else {
-        data.partsList = '사용된 부품이 없습니다.';
-    }
-    
-    // 인건비 목록 처리
-    const laborList = modal.querySelector('#detailLabor');
-    if (laborList) {
-        const laborContent = laborList.innerHTML;
-        if (laborContent && laborContent.trim() !== '' && !laborContent.includes('인건비 내역이 없습니다')) {
-            data.laborList = laborContent;
-        } else {
-            data.laborList = '인건비 내역이 없습니다.';
-        }
-    } else {
-        data.laborList = '인건비 내역이 없습니다.';
-    }
-    
-    // 부품 총액 추출
-    const partsTotalElement = modal.querySelector('#detailPartsTotal');
-    if (partsTotalElement) {
-        const partsTotalText = partsTotalElement.textContent || '0';
-        const partsTotalMatch = partsTotalText.match(/[\d,]+/);
-        if (partsTotalMatch) {
-            data.partsTotal = parseInt(partsTotalMatch[0].replace(/,/g, ''));
-        } else {
             data.partsTotal = 0;
         }
     } else {
-        data.partsTotal = 0;
+        // 대체 방법: 모달에서 HTML 추출
+        const partsList = modal.querySelector('#detailParts');
+        if (partsList) {
+            const partsContent = partsList.innerHTML;
+            if (partsContent && partsContent.trim() !== '' && !partsContent.includes('사용된 부품이 없습니다')) {
+                data.partsList = partsContent;
+            } else {
+                data.partsList = '사용된 부품이 없습니다.';
+            }
+        } else {
+            data.partsList = '사용된 부품이 없습니다.';
+        }
     }
     
-    // 인건비 총액 추출
-    const laborTotalElement = modal.querySelector('#detailLaborTotal');
-    if (laborTotalElement) {
-        const laborTotalText = laborTotalElement.textContent || '0';
-        const laborTotalMatch = laborTotalText.match(/[\d,]+/);
-        if (laborTotalMatch) {
-            data.laborTotal = parseInt(laborTotalMatch[0].replace(/,/g, ''));
+    // 인건비 목록 처리 - 실제 데이터베이스에서 가져온 데이터 사용
+    if (window.currentRepairData && window.currentRepairData.labor && Array.isArray(window.currentRepairData.labor)) {
+        const labor = window.currentRepairData.labor;
+        if (labor.length > 0) {
+            const laborHtml = labor.map(item => {
+                const cost = item.cost || item.amount || 0;
+                const name = item.name || item.description || '인건비';
+                
+                return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                    ${name} - ${cost.toLocaleString('ko-KR')}원
+                </div>`;
+            }).join('');
+            data.laborList = laborHtml;
+            
+            // 인건비 총액 계산
+            data.laborTotal = labor.reduce((sum, item) => {
+                const cost = item.cost || item.amount || 0;
+                return sum + cost;
+            }, 0);
         } else {
+            data.laborList = '인건비 내역이 없습니다.';
             data.laborTotal = 0;
         }
     } else {
-        data.laborTotal = 0;
+        // 대체 방법: 모달에서 HTML 추출
+        const laborList = modal.querySelector('#detailLabor');
+        if (laborList) {
+            const laborContent = laborList.innerHTML;
+            if (laborContent && laborContent.trim() !== '' && !laborContent.includes('인건비 내역이 없습니다')) {
+                data.laborList = laborContent;
+            } else {
+                data.laborList = '인건비 내역이 없습니다.';
+            }
+        } else {
+            data.laborList = '인건비 내역이 없습니다.';
+        }
+    }
+    
+    // 부품 총액과 인건비 총액은 이미 위에서 계산됨
+    // 추가로 모달에서 추출할 필요가 있는 경우에만 처리
+    if (!data.partsTotal && data.partsTotal !== 0) {
+        const partsTotalElement = modal.querySelector('#detailPartsTotal');
+        if (partsTotalElement) {
+            const partsTotalText = partsTotalElement.textContent || '0';
+            const partsTotalMatch = partsTotalText.match(/[\d,]+/);
+            if (partsTotalMatch) {
+                data.partsTotal = parseInt(partsTotalMatch[0].replace(/,/g, ''));
+            } else {
+                data.partsTotal = 0;
+            }
+        } else {
+            data.partsTotal = 0;
+        }
+    }
+    
+    if (!data.laborTotal && data.laborTotal !== 0) {
+        const laborTotalElement = modal.querySelector('#detailLaborTotal');
+        if (laborTotalElement) {
+            const laborTotalText = laborTotalElement.textContent || '0';
+            const laborTotalMatch = laborTotalText.match(/[\d,]+/);
+            if (laborTotalMatch) {
+                data.laborTotal = parseInt(laborTotalMatch[0].replace(/,/g, ''));
+            } else {
+                data.laborTotal = 0;
+            }
+        } else {
+            data.laborTotal = 0;
+        }
     }
     
     // 부품과 인건비 총액이 0이면 HTML에서 자동 계산
@@ -505,5 +573,4 @@ function extractRepairDataFromModal(modal) {
 
 // 전역 함수로 등록
 window.printRepairDetail = printRepairDetail;
-window.printRepairDetailUtils = printRepairDetail; // 무한 재귀 방지를 위한 별칭
 window.extractRepairDataFromModal = extractRepairDataFromModal;

@@ -153,6 +153,7 @@
                             <th>구매코드</th>
                             <th>구매일</th>
                             <th>구분</th>
+                            <th>상품</th>
                             <th>공급가액</th>
                             <th>부가세</th>
                             <th>총금액</th>
@@ -451,7 +452,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline" onclick="printRepairDetail()">🖨️ 프린트</button>
+                <button type="button" class="btn btn-outline" onclick="printRepairDetailFromModal()">🖨️ 프린트</button>
                 <button type="button" class="btn btn-outline" onclick="closeRepairDetailModal()">닫기</button>
             </div>
         </div>
@@ -624,6 +625,6 @@
     <script src="customer-detail-utils.js"></script>
     <script src="print-utils.js"></script>
     <script src="/repairs/repair-add.js"></script>
-    <script src="/repairs/repair-management.js"></script>
+    <!-- repair-management.js 제거 - 자동 모달 열림 방지 -->
 </body>
 </html>

@@ -7,6 +7,19 @@ let currentStatus = '';
 window.addEventListener('load', () => {
     checkUserStatus();
     loadCustomers();
+    
+    // data-listener-added 속성 제거
+    const customerSearchInput = document.getElementById('customerSearch');
+    if (customerSearchInput) {
+        // data-listener-added로 시작하는 모든 속성 제거
+        const attributes = customerSearchInput.attributes;
+        for (let i = attributes.length - 1; i >= 0; i--) {
+            const attr = attributes[i];
+            if (attr.name.startsWith('data-listener-added')) {
+                customerSearchInput.removeAttribute(attr.name);
+            }
+        }
+    }
 });
 
 // 사용자 상태 확인

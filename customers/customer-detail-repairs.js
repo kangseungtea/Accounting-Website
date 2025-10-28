@@ -27,13 +27,40 @@ function displayRepairs(repairs) {
             <td>${repair.total_cost ? repair.total_cost.toLocaleString('ko-KR') + '원' : '-'}</td>
             <td>
                 <div class="action-buttons">
-                    <button class="action-btn view-btn" onclick="viewRepairDetail(${repair.id})">상세</button>
-                    <button class="action-btn edit-btn" onclick="editRepair(${repair.id})">수정</button>
-                    <button class="action-btn delete-btn" onclick="deleteRepair(${repair.id})">삭제</button>
+                    <button class="action-btn view-btn" data-repair-id="${repair.id}">상세</button>
+                    <button class="action-btn edit-btn" data-repair-id="${repair.id}">수정</button>
+                    <button class="action-btn delete-btn" data-repair-id="${repair.id}">삭제</button>
                 </div>
             </td>
         `;
         tbody.appendChild(row);
+    });
+    
+    // 이벤트 리스너 추가 (자동 클릭 방지)
+    tbody.addEventListener('click', function(e) {
+        const target = e.target;
+        if (target.classList.contains('view-btn')) {
+            e.preventDefault();
+            e.stopPropagation();
+            const repairId = target.getAttribute('data-repair-id');
+            if (repairId) {
+                viewRepairDetail(parseInt(repairId));
+            }
+        } else if (target.classList.contains('edit-btn')) {
+            e.preventDefault();
+            e.stopPropagation();
+            const repairId = target.getAttribute('data-repair-id');
+            if (repairId) {
+                editRepair(parseInt(repairId));
+            }
+        } else if (target.classList.contains('delete-btn')) {
+            e.preventDefault();
+            e.stopPropagation();
+            const repairId = target.getAttribute('data-repair-id');
+            if (repairId) {
+                deleteRepair(parseInt(repairId));
+            }
+        }
     });
 }
 
@@ -274,6 +301,10 @@ async function viewRepairDetail(repairId) {
         if (result.success) {
             const repair = result.data;
             
+            // 전역 변수로 repair 데이터 저장 (프린트에서 사용)
+            window.currentRepairData = repair;
+            console.log('🔍 전역 repair 데이터 저장:', window.currentRepairData);
+            
             console.log('🔍 수리 이력 데이터:', repair);
             console.log('🔢 management_number 값:', repair.management_number);
             
@@ -306,8 +337,12 @@ async function viewRepairDetail(repairId) {
             if (repair.parts && Array.isArray(repair.parts) && repair.parts.length > 0) {
                 const partsHtml = repair.parts.map(part => {
                     if (typeof part === 'object' && part !== null) {
+                        const quantity = part.quantity || 1;
+                        const unitPrice = part.unit_price || part.unitPrice || 0;
+                        const totalPrice = part.total_price || part.totalPrice || (quantity * unitPrice);
+                        
                         return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">
-                            <strong>${part.name || '부품명 없음'}</strong> - ${part.quantity || 1}개 × ${(part.unit_price || 0).toLocaleString('ko-KR')}원 = ${(part.total_price || 0).toLocaleString('ko-KR')}원
+                            <strong>${part.name || '부품명 없음'}</strong> - ${quantity}개 × ${unitPrice.toLocaleString('ko-KR')}원 = ${totalPrice.toLocaleString('ko-KR')}원
                         </div>`;
                     } else {
                         return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">${part}</div>`;
@@ -322,8 +357,11 @@ async function viewRepairDetail(repairId) {
             if (repair.labor && Array.isArray(repair.labor) && repair.labor.length > 0) {
                 const laborHtml = repair.labor.map(l => {
                     if (typeof l === 'object' && l !== null) {
+                        const cost = l.cost || l.amount || 0;
+                        const name = l.name || l.description || '인건비';
+                        
                         return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">
-                            ${l.description || '인건비'} - ${(l.amount || 0).toLocaleString('ko-KR')}원
+                            ${name} - ${cost.toLocaleString('ko-KR')}원
                         </div>`;
                     } else {
                         return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">${l}</div>`;
@@ -334,8 +372,42 @@ async function viewRepairDetail(repairId) {
                 document.getElementById('detailLabor').innerHTML = '<div style="padding: 8px 0; color: #666; font-style: italic;">인건비 내역이 없습니다.</div>';
             }
             
-            // 총 비용 설정
-            document.getElementById('detailTotalCost').textContent = repair.total_cost ? repair.total_cost.toLocaleString('ko-KR') + '원' : '-';
+            // 비용 계산 및 설정
+            const totalCost = repair.total_cost || 0;
+            const vatOption = repair.vat_option || 'included';
+            
+            let supplyAmount, vatAmount, vatDescription;
+            
+            if (vatOption === 'included') {
+                // 부가세 포함: 총액에서 부가세를 제외한 공급가액 계산
+                supplyAmount = Math.round(totalCost / 1.1);
+                vatAmount = totalCost - supplyAmount;
+                vatDescription = '부품비 + 인건비 (부가세 포함)';
+            } else if (vatOption === 'excluded') {
+                // 부가세 미포함: 총액이 공급가액, 부가세 별도 계산
+                supplyAmount = totalCost;
+                vatAmount = Math.round(totalCost * 0.1);
+                vatDescription = '부품비 + 인건비 (부가세 별도)';
+            } else {
+                // 부가세 없음: 총액이 공급가액, 부가세 0
+                supplyAmount = totalCost;
+                vatAmount = 0;
+                vatDescription = '부품비 + 인건비 (부가세 없음)';
+            }
+            
+            // 비용 정보 표시
+            document.getElementById('detailSupplyAmount').textContent = supplyAmount.toLocaleString('ko-KR') + '원';
+            document.getElementById('detailVatAmount').textContent = vatAmount.toLocaleString('ko-KR') + '원';
+            document.getElementById('detailVatDescription').textContent = vatDescription;
+            document.getElementById('detailTotalCost').textContent = totalCost.toLocaleString('ko-KR') + '원';
+            
+            // 부가세 섹션 표시/숨김
+            const vatSection = document.getElementById('detailVatSection');
+            if (vatAmount > 0) {
+                vatSection.style.display = 'block';
+            } else {
+                vatSection.style.display = 'none';
+            }
             
             // 모달 표시
             document.getElementById('repairDetailModal').style.display = 'flex';
@@ -363,8 +435,7 @@ function closeRepairDetailModal() {
 }
 
 // 수리 이력 상세 프린트
-// 수리 이력 상세 프린트 (새로운 방식)
-function printRepairDetail() {
+function printRepairDetailFromModal() {
     console.log('🖨️ 프린트 함수 시작');
     
     const repairDetailModal = document.getElementById('repairDetailModal');
@@ -378,16 +449,455 @@ function printRepairDetail() {
     
     // 모달에서 데이터 추출
     const repairData = window.extractRepairDataFromModal(repairDetailModal);
+    console.log('📋 추출된 데이터:', repairData);
+    console.log('📋 데이터 타입:', typeof repairData);
+    console.log('📋 데이터 키 개수:', repairData ? Object.keys(repairData).length : 'N/A');
+    
+    if (!repairData || Object.keys(repairData).length === 0) {
+        console.error('❌ 수리 데이터 추출 실패');
+        console.error('❌ repairDetailModal:', repairDetailModal);
+        console.error('❌ extractRepairDataFromModal 함수:', window.extractRepairDataFromModal);
+        
+        // 대체 방법: 전역 데이터 사용
+        if (window.currentRepairData) {
+            console.log('🔄 전역 데이터 사용:', window.currentRepairData);
+            repairData = window.currentRepairData;
+        } else {
+            alert('수리 데이터를 추출할 수 없습니다. 먼저 수리 이력을 선택해주세요.');
+            return;
+        }
+    }
     
     // 프린트 실행
+    console.log('🔍 printRepairDetail 함수 확인:', window.printRepairDetail);
+    console.log('🔍 전달할 데이터:', repairData);
+    
+    if (window.printRepairDetail) {
+        console.log('✅ printRepairDetail 호출 시작');
+        try {
     window.printRepairDetail(repairData);
+        } catch (error) {
+            console.error('❌ printRepairDetail 호출 오류:', error);
+            alert('프린트 기능을 사용할 수 없습니다.');
+        }
+    } else {
+        console.error('❌ 프린트 함수를 찾을 수 없습니다.');
+        console.error('❌ 사용 가능한 함수들:', Object.keys(window).filter(key => key.includes('print')));
+        alert('프린트 기능을 사용할 수 없습니다.');
+    }
 }
 
 // 수리 이력 수정
 async function editRepair(repairId) {
-    // 수리 이력 수정 기능 구현
-    console.log('수리 이력 수정:', repairId);
-    showMessage('수리 이력 수정 기능은 구현 중입니다.', 'info');
+    console.log('🔧 수리 이력 수정 시작, ID:', repairId);
+    
+    try {
+        // 수리 이력 데이터 로드
+        const response = await fetch(`/api/repairs/${repairId}`, {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`수리 이력을 불러올 수 없습니다. (${response.status})`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const repair = result.data;
+            console.log('🔍 수리 이력 데이터:', repair);
+            
+            // 수리 이력 수정 모달 생성
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.id = 'editRepairModal';
+            modal.style.display = 'flex';
+            
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+                    <div class="modal-header">
+                        <h2>수리 이력 수정</h2>
+                        <button class="close-btn" onclick="closeEditRepairModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <style>
+                            .form-section {
+                                margin-bottom: 25px;
+                                padding: 15px;
+                                border: 1px solid #e0e0e0;
+                                border-radius: 8px;
+                                background: #f9f9f9;
+                            }
+                            .form-section h3 {
+                                margin: 0 0 15px 0;
+                                color: #333;
+                                font-size: 16px;
+                                border-bottom: 2px solid #007bff;
+                                padding-bottom: 5px;
+                            }
+                            .part-item, .labor-item {
+                                background: white;
+                                padding: 10px;
+                                border: 1px solid #ddd;
+                                border-radius: 5px;
+                                margin-bottom: 10px;
+                            }
+                            .no-parts, .no-labor {
+                                text-align: center;
+                                color: #666;
+                                font-style: italic;
+                                padding: 20px;
+                                background: #f8f9fa;
+                                border: 1px dashed #ccc;
+                                border-radius: 5px;
+                            }
+                            .btn-sm {
+                                padding: 4px 8px;
+                                font-size: 12px;
+                            }
+                        </style>
+                        <form id="editRepairForm">
+                            <div class="form-section">
+                                <h3>기본 정보</h3>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="editRepairDate">수리일 *</label>
+                                        <input type="date" id="editRepairDate" value="${repair.repair_date ? repair.repair_date.split(' ')[0] : ''}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="editDeviceModel">장비 모델</label>
+                                        <textarea id="editDeviceModel" rows="3" placeholder="장비 모델 정보를 입력하세요">${repair.device_model || ''}</textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="editProblem">문제 설명</label>
+                                        <textarea id="editProblem" rows="3" placeholder="문제를 설명해주세요">${repair.problem || ''}</textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="editSolution">해결 방법</label>
+                                        <textarea id="editSolution" rows="3" placeholder="해결 방법을 입력하세요">${repair.solution || ''}</textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="editStatus">상태</label>
+                                        <select id="editStatus">
+                                            <option value="접수" ${repair.status === '접수' ? 'selected' : ''}>접수</option>
+                                            <option value="진행중" ${repair.status === '진행중' ? 'selected' : ''}>진행중</option>
+                                            <option value="완료" ${repair.status === '완료' ? 'selected' : ''}>완료</option>
+                                            <option value="취소" ${repair.status === '취소' ? 'selected' : ''}>취소</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="editTechnician">담당자</label>
+                                        <input type="text" id="editTechnician" value="${repair.technician || ''}" placeholder="담당자명을 입력하세요">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="editTotalCost">총 비용 (원)</label>
+                                        <input type="number" id="editTotalCost" value="${repair.total_cost || 0}" min="0" placeholder="총 비용을 입력하세요">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="editVatOption">부가세 옵션</label>
+                                        <select id="editVatOption">
+                                            <option value="included" ${repair.vat_option === 'included' ? 'selected' : ''}>부가세 포함</option>
+                                            <option value="excluded" ${repair.vat_option === 'excluded' ? 'selected' : ''}>부가세 미포함</option>
+                                            <option value="none" ${repair.vat_option === 'none' ? 'selected' : ''}>부가세 없음</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="editWarranty">품질보증</label>
+                                        <textarea id="editWarranty" rows="2" placeholder="품질보증 정보를 입력하세요">${repair.warranty || ''}</textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="editNotes">비고</label>
+                                        <textarea id="editNotes" rows="2" placeholder="추가 메모를 입력하세요">${repair.notes || ''}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 부품 관리 섹션 -->
+                            <div class="form-section">
+                                <h3>🔧 사용 부품</h3>
+                                <div id="editPartsList">
+                                    ${repair.parts && repair.parts.length > 0 ? 
+                                        repair.parts.map(part => `
+                                            <div class="part-item" data-part-id="${part.id}">
+                                                <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 10px; align-items: end;">
+                                                    <div>
+                                                        <label>부품명</label>
+                                                        <input type="text" value="${part.name || ''}" class="part-name" placeholder="부품명">
+                                                    </div>
+                                                    <div>
+                                                        <label>수량</label>
+                                                        <input type="number" value="${part.quantity || 1}" class="part-quantity" min="1">
+                                                    </div>
+                                                    <div>
+                                                        <label>단가</label>
+                                                        <input type="number" value="${part.unitPrice || 0}" class="part-unit-price" min="0">
+                                                    </div>
+                                                    <div>
+                                                        <label>총액</label>
+                                                        <input type="number" value="${part.totalPrice || 0}" class="part-total-price" min="0" readonly>
+                                                    </div>
+                                                    <div>
+                                                        <button type="button" onclick="removePart(this)" class="btn btn-danger btn-sm">삭제</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `).join('') : 
+                                        '<div class="no-parts">사용된 부품이 없습니다.</div>'
+                                    }
+                                </div>
+                                <button type="button" onclick="addPart()" class="btn btn-outline btn-sm" style="margin-top: 10px;">+ 부품 추가</button>
+                            </div>
+                            
+                            <!-- 인건비 관리 섹션 -->
+                            <div class="form-section">
+                                <h3>👷 인건비 내역</h3>
+                                <div id="editLaborList">
+                                    ${repair.labor && repair.labor.length > 0 ? 
+                                        repair.labor.map(labor => `
+                                            <div class="labor-item" data-labor-id="${labor.id}">
+                                                <div class="form-grid" style="grid-template-columns: 2fr 1fr auto; gap: 10px; align-items: end;">
+                                                    <div>
+                                                        <label>작업명</label>
+                                                        <input type="text" value="${labor.name || ''}" class="labor-name" placeholder="작업명">
+                                                    </div>
+                                                    <div>
+                                                        <label>비용</label>
+                                                        <input type="number" value="${labor.cost || 0}" class="labor-cost" min="0">
+                                                    </div>
+                                                    <div>
+                                                        <button type="button" onclick="removeLabor(this)" class="btn btn-danger btn-sm">삭제</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `).join('') : 
+                                        '<div class="no-labor">인건비 내역이 없습니다.</div>'
+                                    }
+                                </div>
+                                <button type="button" onclick="addLabor()" class="btn btn-outline btn-sm" style="margin-top: 10px;">+ 인건비 추가</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" onclick="updateRepair(${repairId})" class="btn btn-primary">수정</button>
+                        <button type="button" onclick="closeEditRepairModal()" class="btn btn-outline">취소</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+        } else {
+            showMessage('수리 이력을 불러오는데 실패했습니다.', 'error');
+        }
+        
+    } catch (error) {
+        console.error('수리 이력 수정 오류:', error);
+        showMessage('수리 이력을 불러오는 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 수리 이력 수정 모달 닫기
+function closeEditRepairModal() {
+    const modal = document.getElementById('editRepairModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// 부품 추가
+function addPart() {
+    const partsList = document.getElementById('editPartsList');
+    const noPartsDiv = partsList.querySelector('.no-parts');
+    if (noPartsDiv) {
+        noPartsDiv.remove();
+    }
+    
+    const partItem = document.createElement('div');
+    partItem.className = 'part-item';
+    partItem.innerHTML = `
+        <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 10px;">
+            <div>
+                <label>부품명</label>
+                <input type="text" class="part-name" placeholder="부품명">
+            </div>
+            <div>
+                <label>수량</label>
+                <input type="number" class="part-quantity" value="1" min="1" onchange="calculatePartTotal(this)">
+            </div>
+            <div>
+                <label>단가</label>
+                <input type="number" class="part-unit-price" value="0" min="0" onchange="calculatePartTotal(this)">
+            </div>
+            <div>
+                <label>총액</label>
+                <input type="number" class="part-total-price" value="0" min="0" readonly>
+            </div>
+            <div>
+                <button type="button" onclick="removePart(this)" class="btn btn-danger btn-sm">삭제</button>
+            </div>
+        </div>
+    `;
+    
+    partsList.appendChild(partItem);
+}
+
+// 부품 삭제
+function removePart(button) {
+    const partItem = button.closest('.part-item');
+    partItem.remove();
+    
+    // 부품이 없으면 메시지 표시
+    const partsList = document.getElementById('editPartsList');
+    if (partsList.children.length === 0) {
+        partsList.innerHTML = '<div class="no-parts">사용된 부품이 없습니다.</div>';
+    }
+}
+
+// 부품 총액 계산
+function calculatePartTotal(input) {
+    const partItem = input.closest('.part-item');
+    const quantity = parseInt(partItem.querySelector('.part-quantity').value) || 0;
+    const unitPrice = parseInt(partItem.querySelector('.part-unit-price').value) || 0;
+    const totalPrice = quantity * unitPrice;
+    
+    partItem.querySelector('.part-total-price').value = totalPrice;
+}
+
+// 인건비 추가
+function addLabor() {
+    const laborList = document.getElementById('editLaborList');
+    const noLaborDiv = laborList.querySelector('.no-labor');
+    if (noLaborDiv) {
+        noLaborDiv.remove();
+    }
+    
+    const laborItem = document.createElement('div');
+    laborItem.className = 'labor-item';
+    laborItem.innerHTML = `
+        <div class="form-grid" style="grid-template-columns: 2fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 10px;">
+            <div>
+                <label>작업명</label>
+                <input type="text" class="labor-name" placeholder="작업명">
+            </div>
+            <div>
+                <label>비용</label>
+                <input type="number" class="labor-cost" value="0" min="0">
+            </div>
+            <div>
+                <button type="button" onclick="removeLabor(this)" class="btn btn-danger btn-sm">삭제</button>
+            </div>
+        </div>
+    `;
+    
+    laborList.appendChild(laborItem);
+}
+
+// 인건비 삭제
+function removeLabor(button) {
+    const laborItem = button.closest('.labor-item');
+    laborItem.remove();
+    
+    // 인건비가 없으면 메시지 표시
+    const laborList = document.getElementById('editLaborList');
+    if (laborList.children.length === 0) {
+        laborList.innerHTML = '<div class="no-labor">인건비 내역이 없습니다.</div>';
+    }
+}
+
+// 수리 이력 업데이트
+async function updateRepair(repairId) {
+    console.log('🔧 수리 이력 업데이트 시작, ID:', repairId);
+    
+    try {
+        // 폼 데이터 수집
+        const repairData = {
+            repair_date: document.getElementById('editRepairDate').value,
+            device_model: document.getElementById('editDeviceModel').value,
+            problem: document.getElementById('editProblem').value,
+            solution: document.getElementById('editSolution').value,
+            status: document.getElementById('editStatus').value,
+            technician: document.getElementById('editTechnician').value,
+            total_cost: parseInt(document.getElementById('editTotalCost').value) || 0,
+            vat_option: document.getElementById('editVatOption').value,
+            warranty: document.getElementById('editWarranty').value,
+            notes: document.getElementById('editNotes').value
+        };
+        
+        // 부품 데이터 수집
+        const parts = [];
+        const partItems = document.querySelectorAll('.part-item');
+        partItems.forEach(item => {
+            const name = item.querySelector('.part-name').value;
+            const quantity = parseInt(item.querySelector('.part-quantity').value) || 0;
+            const unitPrice = parseInt(item.querySelector('.part-unit-price').value) || 0;
+            const totalPrice = parseInt(item.querySelector('.part-total-price').value) || 0;
+            
+            if (name && quantity > 0) {
+                parts.push({
+                    name: name,
+                    quantity: quantity,
+                    unitPrice: unitPrice,
+                    totalPrice: totalPrice
+                });
+            }
+        });
+        
+        // 인건비 데이터 수집
+        const labor = [];
+        const laborItems = document.querySelectorAll('.labor-item');
+        laborItems.forEach(item => {
+            const name = item.querySelector('.labor-name').value;
+            const cost = parseInt(item.querySelector('.labor-cost').value) || 0;
+            
+            if (name && cost > 0) {
+                labor.push({
+                    name: name,
+                    cost: cost
+                });
+            }
+        });
+        
+        repairData.parts = parts;
+        repairData.labor = labor;
+        
+        console.log('📋 수정할 데이터:', repairData);
+        
+        // 필수 필드 검증
+        if (!repairData.repair_date) {
+            showMessage('수리일은 필수입니다.', 'error');
+            return;
+        }
+        
+        // API 호출
+        const response = await fetch(`/api/repairs/${repairId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(repairData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('수리 이력이 성공적으로 수정되었습니다.', 'success');
+            closeEditRepairModal();
+            
+            // 수리 이력 목록 새로고침
+            if (typeof window.loadRepairs === 'function') {
+                window.loadRepairs();
+            } else {
+                loadCustomerData(); // 페이지 새로고침
+            }
+        } else {
+            showMessage(result.message || '수리 이력 수정에 실패했습니다.', 'error');
+        }
+        
+    } catch (error) {
+        console.error('수리 이력 업데이트 오류:', error);
+        showMessage('수리 이력 수정 중 오류가 발생했습니다.', 'error');
+    }
 }
 
 // 수리 이력 삭제
@@ -546,11 +1056,11 @@ window.loadRepairs = loadRepairs;
 window.updateRepairStatistics = updateRepairStatistics;
 window.printRepairDetail = printRepairDetail;
 
-// 페이지 로드 시 통계 초기화
+// 페이지 로드 시 통계 초기화 (자동 호출 제거)
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 페이지 로드 완료, 수리 이력 통계 초기화 중...');
     
-    // 수리 이력 탭이 활성화될 때 통계 업데이트
+    // 수리 이력 탭이 활성화될 때만 통계 업데이트
     const repairsTab = document.querySelector('[data-tab="repairs"]');
     if (repairsTab) {
         repairsTab.addEventListener('click', function() {
@@ -563,30 +1073,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // 현재 탭이 수리 이력인 경우 즉시 로드
-    const activeTab = document.querySelector('.tab-btn.active');
-    if (activeTab && activeTab.getAttribute('data-tab') === 'repairs') {
-        console.log('📊 수리 이력 탭이 활성화됨, 즉시 로드 중...');
-        setTimeout(() => {
-            if (typeof window.loadRepairs === 'function') {
-                window.loadRepairs();
-            }
-        }, 500);
-    }
-    
-    // 페이지 로드 후 약간의 지연을 두고 통계 업데이트 시도
-    setTimeout(() => {
-        console.log('🔄 페이지 로드 후 통계 업데이트 시도...');
-        if (typeof window.loadRepairs === 'function') {
-            window.loadRepairs();
-        }
-    }, 1000);
+    // 자동 로드 제거 - 수동으로만 호출되도록 변경
+    console.log('📊 자동 로드 비활성화됨 - 수동으로만 호출됩니다.');
 });
 
 // 전역 함수 등록
 window.viewRepairDetail = viewRepairDetail;
 window.closeRepairDetailModal = closeRepairDetailModal;
 window.printRepairDetail = printRepairDetail;
+window.editRepair = editRepair;
+window.closeEditRepairModal = closeEditRepairModal;
+window.updateRepair = updateRepair;
+window.addPart = addPart;
+window.removePart = removePart;
+window.calculatePartTotal = calculatePartTotal;
+window.addLabor = addLabor;
+window.removeLabor = removeLabor;
 
 // 수리 이력 탭 전환 시 통계 업데이트
 function switchToRepairsTab() {
