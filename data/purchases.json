@@ -22,57 +22,5 @@
     "paymentMethod": "카드",
     "status": "완료",
     "notes": "추가 주문"
-  },
-  {
-    "id": 1759938470915,
-    "customerId": 1759932441952,
-    "purchaseDate": "2025-10-02T00:00:00.000Z",
-    "type": "매입",
-    "items": [
-      {
-        "productId": "1759938418254",
-        "name": "타무즈 DDR4 PC4-25600 [16GB] (3200)",
-        "quantity": 2,
-        "unitPrice": 51200,
-        "totalPrice": 102400
-      }
-    ],
-    "totalAmount": 102400,
-    "paymentMethod": "현금",
-    "status": "완료",
-    "notes": "",
-    "taxInfo": {
-      "option": "included",
-      "subtotal": 102400,
-      "tax": 9309,
-      "total": 102400
-    },
-    "purchaseCode": "P251009001"
-  },
-  {
-    "id": 1759938583380,
-    "customerId": 1759932441952,
-    "purchaseDate": "2025-10-02T00:00:00.000Z",
-    "type": "매입",
-    "items": [
-      {
-        "productId": "1759936792842",
-        "name": "Windows 11 Home [COEM(DSP)/한글/64bit]",
-        "quantity": 1,
-        "unitPrice": 175000,
-        "totalPrice": 175000
-      }
-    ],
-    "totalAmount": 175000,
-    "paymentMethod": "현금",
-    "status": "완료",
-    "notes": "",
-    "taxInfo": {
-      "option": "included",
-      "subtotal": 175000,
-      "tax": 15909,
-      "total": 175000
-    },
-    "purchaseCode": "P251009001"
   }
 ]

@@ -1102,3 +1102,293 @@ p a:hover {
 #totalAmount {
     font-weight: 500;
 }
+
+/* 부품 행 스타일 */
+.part-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.part-row .autocomplete-container {
+    flex: 2;
+    position: relative;
+}
+
+.part-row input[type="number"] {
+    flex: 1;
+    min-width: 80px;
+}
+
+.part-total {
+    font-weight: bold;
+    color: #1976d2;
+}
+
+/* 인건비 행 스타일 */
+.labor-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 10px;
+    background: #fff3e0;
+    border-radius: 6px;
+    border: 1px solid #ffcc02;
+}
+
+.labor-row input[type="text"] {
+    flex: 2;
+    min-width: 200px;
+}
+
+.labor-row input[type="number"] {
+    flex: 1;
+    min-width: 120px;
+}
+
+.labor-total {
+    font-weight: bold;
+    color: #f57c00;
+}
+
+/* 수리 상세 모달 전체 스타일 */
+#repairDetailModal .modal-content {
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+#repairDetailModal .modal-body {
+    padding: 30px;
+}
+
+/* 섹션 스타일 */
+.detail-section {
+    margin-bottom: 30px;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid #e9ecef;
+}
+
+.detail-section h3 {
+    color: #2c3e50;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #3498db;
+    display: flex;
+    align-items: center;
+}
+
+/* 아이콘은 HTML에서 직접 추가하므로 CSS에서 제거 */
+
+/* 기본 정보 그리드 */
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+    transition: all 0.3s ease;
+}
+
+.detail-item:hover {
+    background: #e3f2fd;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+}
+
+.detail-item label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 14px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.detail-item span {
+    font-weight: 500;
+    color: #2c3e50;
+    font-size: 16px;
+    word-break: break-word;
+}
+
+/* 부품 및 인건비 표시 */
+#detailParts, #detailLabor {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    line-height: 1.8;
+    font-size: 15px;
+    color: #495057;
+}
+
+#detailParts {
+    border-left: 4px solid #28a745;
+}
+
+#detailLabor {
+    border-left: 4px solid #ffc107;
+}
+
+/* 비용 내역 스타일 */
+.cost-details {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    padding: 25px;
+    margin-top: 15px;
+    color: white;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.cost-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+    transition: all 0.3s ease;
+}
+
+.cost-item:hover {
+    background: rgba(255,255,255,0.1);
+    border-radius: 6px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.cost-item:last-child {
+    border-bottom: none;
+}
+
+.cost-item.total {
+    font-weight: bold;
+    font-size: 20px;
+    color: #fff;
+    border-top: 2px solid rgba(255,255,255,0.5);
+    margin-top: 15px;
+    padding-top: 20px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 20px 15px;
+}
+
+.cost-item label {
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+    font-size: 15px;
+}
+
+.cost-item span {
+    font-weight: 700;
+    color: #fff;
+    font-size: 16px;
+}
+
+.cost-item.total span {
+    font-size: 22px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.vat-description {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 14px;
+    color: rgba(255,255,255,0.8);
+    font-style: italic;
+    background: rgba(255,255,255,0.1);
+    padding: 10px;
+    border-radius: 6px;
+}
+
+/* 모달 헤더 스타일 */
+#repairDetailModal .modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 25px 30px;
+    border-radius: 12px 12px 0 0;
+}
+
+#repairDetailModal .modal-header h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+#repairDetailModal .close-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#repairDetailModal .close-btn:hover {
+    background: rgba(255,255,255,0.3);
+    transform: scale(1.1);
+}
+
+/* 모달 푸터 스타일 */
+#repairDetailModal .modal-footer {
+    padding: 20px 30px;
+    background: #f8f9fa;
+    border-radius: 0 0 12px 12px;
+    text-align: center;
+}
+
+#repairDetailModal .modal-footer .btn {
+    padding: 12px 30px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+#repairDetailModal .modal-footer .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    #repairDetailModal .modal-content {
+        width: 95%;
+        margin: 10px;
+    }
+    
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .detail-section {
+        padding: 20px;
+    }
+    
+    .cost-details {
+        padding: 20px;
+    }
+}

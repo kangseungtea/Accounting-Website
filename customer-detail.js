@@ -3,6 +3,10 @@ let currentCustomerId = null;
 let currentCustomer = null;
 let products = [];
 
+// 전역 변수로 products와 currentCustomer를 사용할 수 있도록 설정
+window.products = products;
+window.currentCustomer = currentCustomer;
+
 // 페이지 로드 시 초기화
 window.addEventListener('load', async () => {
     await checkUserStatus();
@@ -20,6 +24,7 @@ window.addEventListener('load', async () => {
 function getCustomerIdFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
     currentCustomerId = urlParams.get('id');
+    console.log('URL에서 가져온 currentCustomerId:', currentCustomerId, typeof currentCustomerId);
 }
 
 // 제품 목록 로드
@@ -33,6 +38,7 @@ async function loadProducts() {
         
         if (result.success) {
             products = result.data;
+            window.products = products; // 전역 변수도 업데이트
             console.log('제품 데이터 로드 완료:', products.length, '개');
             // 자동완성은 별도 초기화가 필요하지 않음
         } else {
@@ -193,58 +199,7 @@ function updateAmountCalculation() {
 }
 
 // 수리 이력 로드
-async function loadRepairs() {
-    try {
-        const response = await fetch(`/api/repairs?customerId=${currentCustomerId}`, {
-            credentials: 'include'
-        });
-        const result = await response.json();
-        
-        if (result.success) {
-            displayRepairs(result.data);
-        } else {
-            showMessage('수리 이력을 불러오는데 실패했습니다.', 'error');
-        }
-    } catch (error) {
-        showMessage('네트워크 오류가 발생했습니다.', 'error');
-    }
-}
-
-// 수리 이력 표시
-function displayRepairs(repairs) {
-    const tbody = document.getElementById('repairsTableBody');
-    tbody.innerHTML = '';
-
-    if (repairs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #666;">수리 이력이 없습니다.</td></tr>';
-        return;
-    }
-
-    repairs.forEach(repair => {
-        const row = document.createElement('tr');
-        const statusBadge = getStatusBadge(repair.status);
-        const warrantyStatus = getWarrantyStatus(repair);
-
-        row.innerHTML = `
-            <td>${new Date(repair.repairDate).toLocaleDateString('ko-KR')}</td>
-            <td>${repair.deviceModel || '-'}</td>
-            <td>${repair.problem}</td>
-            <td>${repair.solution || '-'}</td>
-            <td>${repair.totalCost.toLocaleString('ko-KR')}원</td>
-            <td>${statusBadge}</td>
-            <td>${warrantyStatus}</td>
-            <td>
-                <div class="action-buttons">
-                    <button class="action-btn view-btn" onclick="viewRepairDetail(${repair.id})">상세</button>
-                    <button class="action-btn edit-btn" onclick="editRepair(${repair.id})">수정</button>
-                    <button class="action-btn status-btn" onclick="changeRepairStatus(${repair.id})">상태변경</button>
-                    <button class="action-btn delete-btn" onclick="deleteRepair(${repair.id})">삭제</button>
-                </div>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-}
+// 수리 이력 관련 함수들은 repair-management.js로 이동됨
 
 // 상태 배지 생성
 function getStatusBadge(status) {
@@ -309,6 +264,7 @@ async function loadCustomerDetail() {
         
         if (result.success) {
             currentCustomer = result.data;
+            window.currentCustomer = currentCustomer; // 전역 변수 업데이트
             displayCustomerInfo();
         } else {
             showMessage('고객 정보를 불러오는데 실패했습니다.', 'error');
@@ -500,9 +456,6 @@ function addVisit() {
     document.getElementById('visitDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('visitModal').style.display = 'flex';
 }
-
-// 수리 이력 추가 함수는 repair-management.js로 이동됨
-
 // 구매 이력 추가
 function addPurchase() {
     document.getElementById('purchaseModalTitle').textContent = '구매 이력 추가';

@@ -5,7 +5,7 @@
     "category": "소프트웨어",
     "brand": "마이크로소프트",
     "price": 175000,
-    "stockQuantity": 1,
+    "stockQuantity": 0,
     "status": "정품",
     "description": "",
     "imageUrl": "",
@@ -18,11 +18,24 @@
     "category": "컴퓨터부품",
     "brand": "타무즈",
     "price": 51200,
-    "stockQuantity": 2,
+    "stockQuantity": 0,
     "status": "정품",
     "description": "",
     "imageUrl": "",
     "productCode": "102013200",
     "registrationDate": "2025-10-08T15:46:58.254Z"
+  },
+  {
+    "id": 1759959678459,
+    "name": "AK620 DIGITAL SE [블랙]",
+    "category": "컴퓨터부품",
+    "brand": "DEEPCOOL",
+    "price": 65000,
+    "stockQuantity": 0,
+    "status": "정품",
+    "description": "",
+    "imageUrl": "",
+    "productCode": "112016200",
+    "registrationDate": "2025-10-08T21:41:18.459Z"
   }
 ]

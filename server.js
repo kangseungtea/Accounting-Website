@@ -135,6 +135,14 @@ let repairRecords = loadData(REPAIRS_FILE, [
     problem: '화면 깨짐',
     solution: 'LCD 패널 교체',
     parts: ['LCD 패널', '액정 테이프'],
+    labor: [
+      {
+        description: 'LCD 패널 교체 작업',
+        hours: 2,
+        rate: 15000,
+        total: 30000
+      }
+    ],
     laborCost: 30000,
     partsCost: 20000,
     totalCost: 50000,
@@ -583,10 +591,17 @@ app.post('/api/visits', requireAuth, (req, res) => {
 app.get('/api/repairs', requireAuth, (req, res) => {
   const { page = 1, limit = 10, customerId, search = '' } = req.query;
   
+  console.log('수리 이력 조회 요청:', { page, limit, customerId, search });
+  console.log('전체 수리 이력 개수:', repairRecords.length);
+  
   let filteredRepairs = repairRecords;
   
   if (customerId) {
-    filteredRepairs = filteredRepairs.filter(r => r.customerId === parseInt(customerId));
+    console.log('고객 ID로 필터링:', customerId, '타입:', typeof customerId);
+    const customerIdInt = parseInt(customerId);
+    console.log('변환된 고객 ID:', customerIdInt);
+    filteredRepairs = filteredRepairs.filter(r => r.customerId === customerIdInt);
+    console.log('필터링 후 수리 이력 개수:', filteredRepairs.length);
   }
   
   if (search) {
@@ -628,14 +643,29 @@ app.post('/api/repairs', requireAuth, (req, res) => {
   console.log('수리 이력 등록 요청:', req.body);
   console.log('요청 헤더:', req.headers);
   
-  const { customerId, repairDate, deviceType, deviceModel, problem, solution, parts, laborCost, partsCost, warranty, technician, status, notes } = req.body;
+  const { customerId, repairDate, deviceType, deviceModel, problem, solution, parts, labor, laborCost, partsCost, warranty, technician, status, notes, vatOption } = req.body;
   
   if (!customerId || !repairDate || !problem) {
     console.log('필수 필드 누락:', { customerId, repairDate, problem });
     return res.json({ success: false, message: '고객ID, 수리일, 문제는 필수입니다.' });
   }
   
-  const totalCost = (laborCost || 0) + (partsCost || 0);
+  // 기본 금액 (부품비 + 인건비)
+  const baseAmount = (laborCost || 0) + (partsCost || 0);
+  
+  // 부가세별 총 비용 계산
+  let totalCost;
+  if (vatOption === 'included') {
+    // 부가세 포함: 기본 금액이 이미 부가세 포함된 금액
+    totalCost = baseAmount;
+  } else if (vatOption === 'excluded') {
+    // 부가세 미포함: 기본 금액에 부가세 추가
+    const vatAmount = Math.round(baseAmount * 0.1);
+    totalCost = baseAmount + vatAmount;
+  } else {
+    // 부가세 없음: 기본 금액 그대로
+    totalCost = baseAmount;
+  }
   
   const newRepair = {
     id: Date.now(),
@@ -646,13 +676,15 @@ app.post('/api/repairs', requireAuth, (req, res) => {
     problem,
     solution: solution || '',
     parts: parts || [],
+    labor: labor || [],
     laborCost: laborCost || 0,
     partsCost: partsCost || 0,
     totalCost,
     warranty: warranty || '',
     status: status || '완료',
     technician: technician || '',
-    notes: notes || ''
+    notes: notes || '',
+    vatOption: vatOption || 'included'
   };
   
   repairRecords.push(newRepair);
@@ -686,9 +718,24 @@ app.put('/api/repairs/:id', requireAuth, (req, res) => {
     return res.json({ success: false, message: '수리 이력을 찾을 수 없습니다.' });
   }
   
-  const { repairDate, deviceModel, problem, solution, parts, laborCost, partsCost, warranty, technician, status, notes } = req.body;
+  const { repairDate, deviceModel, problem, solution, parts, labor, laborCost, partsCost, warranty, technician, status, notes, vatOption } = req.body;
   
-  const totalCost = (laborCost || 0) + (partsCost || 0);
+  // 기본 금액 (부품비 + 인건비)
+  const baseAmount = (laborCost || 0) + (partsCost || 0);
+  
+  // 부가세별 총 비용 계산
+  let totalCost;
+  if (vatOption === 'included') {
+    // 부가세 포함: 기본 금액이 이미 부가세 포함된 금액
+    totalCost = baseAmount;
+  } else if (vatOption === 'excluded') {
+    // 부가세 미포함: 기본 금액에 부가세 추가
+    const vatAmount = Math.round(baseAmount * 0.1);
+    totalCost = baseAmount + vatAmount;
+  } else {
+    // 부가세 없음: 기본 금액 그대로
+    totalCost = baseAmount;
+  }
   
   repairRecords[repairIndex] = {
     ...repairRecords[repairIndex],
@@ -697,13 +744,15 @@ app.put('/api/repairs/:id', requireAuth, (req, res) => {
     problem: problem || repairRecords[repairIndex].problem,
     solution: solution !== undefined ? solution : repairRecords[repairIndex].solution,
     parts: parts || repairRecords[repairIndex].parts,
+    labor: labor || repairRecords[repairIndex].labor || [],
     laborCost: laborCost !== undefined ? laborCost : repairRecords[repairIndex].laborCost,
     partsCost: partsCost !== undefined ? partsCost : repairRecords[repairIndex].partsCost,
     totalCost,
     warranty: warranty !== undefined ? warranty : repairRecords[repairIndex].warranty,
     technician: technician !== undefined ? technician : repairRecords[repairIndex].technician,
     status: status !== undefined ? status : repairRecords[repairIndex].status,
-    notes: notes !== undefined ? notes : repairRecords[repairIndex].notes
+    notes: notes !== undefined ? notes : repairRecords[repairIndex].notes,
+    vatOption: vatOption !== undefined ? vatOption : repairRecords[repairIndex].vatOption || 'included'
   };
   
   res.json({ success: true, message: '수리 이력이 수정되었습니다.', data: repairRecords[repairIndex] });
@@ -801,8 +850,8 @@ app.post('/api/purchases/generate-code', requireAuth, (req, res) => {
   }
   
   // 구매이력 코드 형식: [유형코드][년월일][순번]
-  // 판매: S, 매입: P
-  const typeCode = type === '판매' ? 'S' : 'P';
+  // 판매: S, 매입: P, 선출고: O
+  const typeCode = type === '판매' ? 'S' : (type === '매입' ? 'P' : 'O');
   const today = new Date();
   const dateStr = today.getFullYear().toString().substr(-2) + 
                   (today.getMonth() + 1).toString().padStart(2, '0') + 
@@ -844,7 +893,7 @@ app.post('/api/purchases', requireAuth, (req, res) => {
   // 구매이력 코드가 없으면 자동 생성
   let finalPurchaseCode = purchaseCode;
   if (!finalPurchaseCode) {
-    const typeCode = type === '판매' ? 'S' : 'P';
+    const typeCode = type === '판매' ? 'S' : (type === '매입' ? 'P' : 'O');
     const today = new Date();
     const dateStr = today.getFullYear().toString().substr(-2) + 
                     (today.getMonth() + 1).toString().padStart(2, '0') + 
@@ -900,6 +949,20 @@ app.post('/api/purchases', requireAuth, (req, res) => {
           products[productIndex].stockQuantity = newStock;
           stockUpdated = true;
           console.log(`제품 ${products[productIndex].name} 재고 증가: ${currentStock} → ${newStock} (${item.quantity}개 매입)`);
+        }
+      }
+    }
+  } else if (type === '선출고') {
+    // 선출고 시 재고 차감 (판매와 동일)
+    for (const item of items) {
+      if (item.productId) {
+        const productIndex = products.findIndex(p => p.id == item.productId);
+        if (productIndex !== -1) {
+          const currentStock = products[productIndex].stockQuantity || 0;
+          const newStock = Math.max(0, currentStock - item.quantity);
+          products[productIndex].stockQuantity = newStock;
+          stockUpdated = true;
+          console.log(`제품 ${products[productIndex].name} 재고 차감: ${currentStock} → ${newStock} (${item.quantity}개 선출고)`);
         }
       }
     }
@@ -1437,6 +1500,18 @@ app.put('/api/purchases/:id', requireAuth, (req, res) => {
         }
       }
     }
+  } else if (oldPurchase.type === '선출고') {
+    // 기존 선출고 → 재고 복원 (증가, 판매와 동일)
+    for (const item of oldPurchase.items) {
+      if (item.productId) {
+        const productIndex = products.findIndex(p => p.id == item.productId);
+        if (productIndex !== -1) {
+          const currentStock = products[productIndex].stockQuantity || 0;
+          products[productIndex].stockQuantity = currentStock + item.quantity;
+          console.log(`제품 ${products[productIndex].name} 재고 복원: ${currentStock} → ${products[productIndex].stockQuantity} (기존 선출고 ${item.quantity}개 복원)`);
+        }
+      }
+    }
   }
   
   // 새로운 구매이력에 따른 재고 업데이트
@@ -1463,6 +1538,19 @@ app.put('/api/purchases/:id', requireAuth, (req, res) => {
           const newStock = currentStock + item.quantity;
           products[productIndex].stockQuantity = newStock;
           console.log(`제품 ${products[productIndex].name} 재고 증가: ${currentStock} → ${newStock} (${item.quantity}개 매입)`);
+        }
+      }
+    }
+  } else if (type === '선출고') {
+    // 선출고 시 재고 차감 (판매와 동일)
+    for (const item of items) {
+      if (item.productId) {
+        const productIndex = products.findIndex(p => p.id == item.productId);
+        if (productIndex !== -1) {
+          const currentStock = products[productIndex].stockQuantity || 0;
+          const newStock = Math.max(0, currentStock - item.quantity);
+          products[productIndex].stockQuantity = newStock;
+          console.log(`제품 ${products[productIndex].name} 재고 차감: ${currentStock} → ${newStock} (${item.quantity}개 선출고)`);
         }
       }
     }
@@ -1502,7 +1590,7 @@ app.post('/api/purchases/add-codes', requireAuth, (req, res) => {
   purchases.forEach((purchase, index) => {
     if (!purchase.purchaseCode) {
       // 구매이력 코드 형식: [유형코드][년월일][순번]
-      const typeCode = purchase.type === '판매' ? 'S' : 'P';
+      const typeCode = purchase.type === '판매' ? 'S' : (purchase.type === '매입' ? 'P' : 'O');
       const purchaseDate = new Date(purchase.purchaseDate);
       const dateStr = purchaseDate.getFullYear().toString().substr(-2) + 
                       (purchaseDate.getMonth() + 1).toString().padStart(2, '0') + 
@@ -1575,6 +1663,18 @@ app.delete('/api/purchases/:id', requireAuth, (req, res) => {
           const currentStock = products[productIndex].stockQuantity || 0;
           products[productIndex].stockQuantity = Math.max(0, currentStock - item.quantity);
           console.log(`제품 ${products[productIndex].name} 재고 복원: ${currentStock} → ${products[productIndex].stockQuantity} (매입 삭제로 ${item.quantity}개 복원)`);
+        }
+      }
+    }
+  } else if (purchaseToDelete.type === '선출고') {
+    // 선출고 삭제 → 재고 복원 (증가, 판매와 동일)
+    for (const item of purchaseToDelete.items) {
+      if (item.productId) {
+        const productIndex = products.findIndex(p => p.id == item.productId);
+        if (productIndex !== -1) {
+          const currentStock = products[productIndex].stockQuantity || 0;
+          products[productIndex].stockQuantity = currentStock + item.quantity;
+          console.log(`제품 ${products[productIndex].name} 재고 복원: ${currentStock} → ${products[productIndex].stockQuantity} (선출고 삭제로 ${item.quantity}개 복원)`);
         }
       }
     }
