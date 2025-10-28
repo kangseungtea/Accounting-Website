@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "customerId": 1,
+    "purchaseDate": "2024-10-01T00:00:00.000Z",
+    "type": "판매",
+    "items": [
+      {
+        "name": "마우스",
+        "quantity": 2,
+        "unitPrice": 15000,
+        "totalPrice": 30000
+      },
+      {
+        "name": "키보드",
+        "quantity": 1,
+        "unitPrice": 25000,
+        "totalPrice": 25000
+      }
+    ],
+    "totalAmount": 55000,
+    "paymentMethod": "카드",
+    "status": "완료",
+    "notes": "추가 주문"
+  }
+]

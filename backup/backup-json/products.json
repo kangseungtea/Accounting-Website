@@ -1,0 +1,67 @@
+[
+  {
+    "id": 1759936792842,
+    "name": "Windows 11 Home [COEM(DSP)/한글/64bit]",
+    "category": "소프트웨어",
+    "brand": "마이크로소프트",
+    "price": 175000,
+    "stockQuantity": 1,
+    "status": "정품",
+    "description": "",
+    "imageUrl": "",
+    "productCode": "303131101",
+    "registrationDate": "2025-10-08T15:19:52.842Z"
+  },
+  {
+    "id": 1759938418254,
+    "name": "타무즈 DDR4 PC4-25600 [16GB] (3200)",
+    "category": "컴퓨터부품",
+    "brand": "타무즈",
+    "price": 51200,
+    "stockQuantity": 2,
+    "status": "정품",
+    "description": "",
+    "imageUrl": "",
+    "productCode": "102013200",
+    "registrationDate": "2025-10-08T15:46:58.254Z"
+  },
+  {
+    "id": 1759959678459,
+    "name": "AK620 DIGITAL SE [블랙]",
+    "category": "컴퓨터부품",
+    "brand": "DEEPCOOL",
+    "price": 65000,
+    "stockQuantity": 1,
+    "status": "정품",
+    "description": "",
+    "imageUrl": "",
+    "productCode": "112016200",
+    "registrationDate": "2025-10-08T21:41:18.459Z"
+  },
+  {
+    "id": 1759978266810,
+    "name": "정품무한잉크 T00V670 4색 패키지 (L3100/검정:4,500매,컬러:7,500매)",
+    "category": "프린터",
+    "brand": "EPSON",
+    "price": 45900,
+    "stockQuantity": 0,
+    "status": "정품",
+    "description": "",
+    "imageUrl": "",
+    "productCode": "403010003",
+    "registrationDate": "2025-10-09T02:51:06.810Z"
+  },
+  {
+    "id": 1759978361564,
+    "name": "유,무선 블루투스 기계식 키보드, SPM PL108W ARA [블랙 / 새벽 리니어] ",
+    "category": "주변기기",
+    "brand": "SPM",
+    "price": 44400,
+    "stockQuantity": 0,
+    "status": "중고",
+    "description": "◆ 중고 상품 ◆ ※ 보증기간 : 3개월 / 외관손상제품",
+    "imageUrl": "",
+    "productCode": "505151101",
+    "registrationDate": "2025-10-09T02:52:41.564Z"
+  }
+]

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인</title>
+    <link rel="stylesheet" href="/style.css?v=20250111">
+</head>
+<body>
+    <!-- 네비게이션 바 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#" class="nav-brand" onclick="showHome()">깜냥컴퓨터</a>
+            <ul class="nav-menu" id="navMenu" style="display: none;">
+                <li><a href="#" onclick="showHome()">홈</a></li>
+                <li><a href="#" onclick="showCustomers()">고객</a></li>
+                <li><a href="#" onclick="showProducts()">제품</a></li>
+                <li><a href="#" onclick="showLedger()">장부</a></li>
+                <li><a href="#" onclick="showAccounting()">회계</a></li>
+                <li><a href="#" onclick="showSettings()">설정</a></li>
+            </ul>
+            <div class="user-info" id="userInfo" style="display: none;">
+                <span id="userName">사용자</span>
+                <button onclick="logout()" class="btn btn-outline">로그아웃</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="login-form" style="display: none;">
+            <h2>로그인</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <input type="text" id="username" placeholder="아이디" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="password" placeholder="비밀번호" required>
+                </div>
+                <button type="submit">로그인</button>
+            </form>
+            <p>계정이 없으신가요? <a href="#" id="showRegister">회원가입</a></p>
+        </div>
+
+        <div class="register-form" style="display: none;">
+            <h2>회원가입</h2>
+            <form id="registerForm">
+                <div class="form-group">
+                    <input type="text" id="regName" placeholder="이름" required>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="regUsername" placeholder="아이디" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="regPassword" placeholder="비밀번호" required>
+                </div>
+                <div class="form-group">
+                    <input type="tel" id="regPhone" placeholder="전화번호" required>
+                </div>
+                <button type="submit">가입하기</button>
+            </form>
+            <p>이미 계정이 있으신가요? <a href="#" id="showLogin">로그인</a></p>
+        </div>
+        
+        <!-- 홈 화면 -->
+        <div class="home-screen" id="homeScreen">
+            <h1>깜냥컴퓨터에 오신 것을 환영합니다</h1>
+            <p>로그인하여 서비스를 이용해보세요</p>
+            <button onclick="showLoginForm()" class="btn btn-primary">로그인하기</button>
+        </div>
+
+        <!-- 대시보드 화면 -->
+        <div class="dashboard" id="dashboard" style="display: none;">
+            <h1>대시보드</h1>
+            <div class="dashboard-grid">
+                <div class="dashboard-card" onclick="showCustomers()">
+                    <h3>고객 관리</h3>
+                    <p>고객 정보를 관리합니다</p>
+                </div>
+                <div class="dashboard-card" onclick="showProducts()">
+                    <h3>제품 관리</h3>
+                    <p>제품 재고를 관리합니다</p>
+                </div>
+                <div class="dashboard-card" onclick="showLedger()">
+                    <h3>장부 관리</h3>
+                    <p>수리 내역을 관리합니다</p>
+                </div>
+                <div class="dashboard-card" onclick="showAccounting()">
+                    <h3>회계 관리</h3>
+                    <p>수입/지출을 관리합니다</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <script src="/products/category-manager.js"></script>
+    <script src="/script.js"></script>
+</body>
+</html>

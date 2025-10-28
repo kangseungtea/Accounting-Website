@@ -4,9 +4,9 @@
   "description": "로그인/회원가입 앱",
   "main": "server.js",
   "scripts": {
-    "start": "node server-sqlite.js",
-    "dev": "nodemon server-sqlite.js",
-    "prod": "NODE_ENV=production node server-sqlite.js",
+    "start": "node server/server-sqlite.js",
+    "dev": "nodemon server/server-sqlite.js",
+    "prod": "NODE_ENV=production node server/server-sqlite.js",
     "build": "echo 'Build completed'",
     "deploy": "npm run build && npm run prod"
   },
