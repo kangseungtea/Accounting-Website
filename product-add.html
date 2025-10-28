@@ -252,10 +252,6 @@
                             <label for="productMainCategory" class="required">대분류</label>
                             <select id="productMainCategory" name="mainCategory" required onchange="updateProductSubCategories()">
                                 <option value="">대분류 선택</option>
-                                <option value="하드웨어">하드웨어</option>
-                                <option value="소프트웨어">소프트웨어</option>
-                                <option value="액세서리">액세서리</option>
-                                <option value="기타">기타</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -294,12 +290,19 @@
                     <div class="section-title">가격 및 재고</div>
                     <div class="form-row">
                         <div class="form-group">
+                            <label for="productCode">제품 코드</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="text" id="productCode" name="productCode" placeholder="카테고리 선택 시 자동 생성 또는 수동 입력">
+                                <button type="button" id="generateCodeBtn" onclick="generateProductCode()" class="btn btn-outline" style="padding: 8px 12px; font-size: 12px;">자동 생성</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
                             <label for="productPrice" class="required">가격 (원)</label>
                             <input type="number" id="productPrice" name="price" min="0" step="100" required placeholder="0">
                         </div>
                         <div class="form-group">
-                            <label for="productStock" class="required">재고수량</label>
-                            <input type="number" id="productStock" name="stockQuantity" min="0" required placeholder="0">
+                            <label for="productStock">재고수량</label>
+                            <input type="number" id="productStock" name="stockQuantity" min="0" placeholder="0">
                         </div>
                     </div>
                 </div>
@@ -433,9 +436,31 @@
             // 이미지 파일은 일단 제외 (향후 파일 업로드 기능 추가 가능)
             delete productData.image;
             
+            // 필수 필드 검증
+            if (!productData.name || !productData.mainCategory || !productData.price) {
+                showMessage('제품명, 대분류, 가격은 필수입니다.', 'error');
+                return;
+            }
+            
+            // 제품 코드 중복 검증
+            if (productData.productCode) {
+                const isValidCode = await validateProductCode(productData.productCode);
+                if (!isValidCode) {
+                    showMessage('이미 사용 중인 제품 코드입니다. 다른 코드를 입력해주세요.', 'error');
+                    return;
+                }
+            }
+            
+            // 카테고리 필드명 변경 (서버에서 category로 받음)
+            productData.category = productData.mainCategory;
+            delete productData.mainCategory;
+            
             // 숫자 필드 변환
             productData.price = parseInt(productData.price);
-            productData.stockQuantity = parseInt(productData.stockQuantity);
+            productData.stockQuantity = productData.stockQuantity ? parseInt(productData.stockQuantity) : 0;
+            
+            // 제품 코드 추가
+            productData.productCode = document.getElementById('productCode').value;
             
             // 로딩 상태 설정
             const form = e.target;
@@ -503,30 +528,40 @@
             }, 5000);
         }
 
-        // 3단계 카테고리 데이터 (제품 등록용)
-        const productCategoryData = {
-            '하드웨어': {
-                'PC': ['데스크톱', '워크스테이션', '서버'],
-                '노트북': ['게이밍노트북', '비즈니스노트북', '울트라북'],
-                '모니터': ['게이밍모니터', '사무용모니터', '4K모니터'],
-                '기타': ['CPU', '메모리', '그래픽카드']
-            },
-            '소프트웨어': {
-                '운영체제': ['Windows', 'macOS', 'Linux'],
-                '오피스': ['Microsoft Office', '한글', 'LibreOffice'],
-                '보안': ['백신', '방화벽', '암호화'],
-                '기타': ['게임', '편집툴', '개발툴']
-            },
-            '액세서리': {
-                '키보드': ['기계식', '멤브레인', '무선'],
-                '마우스': ['게이밍마우스', '무선마우스', '트랙볼'],
-                '스피커': ['게이밍스피커', '블루투스스피커', '홈시어터'],
-                '기타': ['헤드셋', '웹캠', '충전기']
-            },
-            '기타': {
-                '기타': ['기타']
+        // 3단계 카테고리 데이터 (서버에서 동적으로 로드)
+        let productCategoryData = {};
+
+        // 카테고리 데이터 로드
+        async function loadProductCategoryData() {
+            try {
+                const response = await fetch('/api/categories', {
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    productCategoryData = result.data;
+                    updateMainCategoryOptions();
+                } else {
+                    console.error('카테고리 데이터 로드 실패:', result.message);
+                }
+            } catch (error) {
+                console.error('카테고리 데이터 로드 오류:', error);
             }
-        };
+        }
+
+        // 대분류 옵션 업데이트
+        function updateMainCategoryOptions() {
+            const mainCategorySelect = document.getElementById('productMainCategory');
+            mainCategorySelect.innerHTML = '<option value="">대분류 선택</option>';
+            
+            Object.keys(productCategoryData).forEach(mainCategory => {
+                const option = document.createElement('option');
+                option.value = mainCategory;
+                option.textContent = mainCategory;
+                mainCategorySelect.appendChild(option);
+            });
+        }
 
         // 제품 등록용 중분류 업데이트
         function updateProductSubCategories() {
@@ -552,6 +587,12 @@
             } else {
                 subCategorySelect.disabled = true;
             }
+            
+            // 소분류 초기화
+            detailCategorySelect.disabled = true;
+            
+            // 제품 코드 초기화
+            document.getElementById('productCode').value = '';
         }
 
         // 제품 등록용 소분류 업데이트
@@ -566,21 +607,124 @@
             if (mainCategory && subCategory && productCategoryData[mainCategory] && productCategoryData[mainCategory][subCategory]) {
                 detailCategorySelect.disabled = false;
                 
-                // 소분류 옵션 추가
-                productCategoryData[mainCategory][subCategory].forEach(detailCategory => {
+                // 소분류가 있는 경우
+                if (productCategoryData[mainCategory][subCategory].length > 0) {
+                    // 소분류 옵션 추가
+                    productCategoryData[mainCategory][subCategory].forEach(detailCategory => {
+                        const option = document.createElement('option');
+                        option.value = detailCategory;
+                        option.textContent = detailCategory;
+                        detailCategorySelect.appendChild(option);
+                    });
+                } else {
+                    // 소분류가 없는 경우 (컴퓨터부품 등) - "기본" 옵션 추가
                     const option = document.createElement('option');
-                    option.value = detailCategory;
-                    option.textContent = detailCategory;
+                    option.value = '기본';
+                    option.textContent = '기본';
                     detailCategorySelect.appendChild(option);
-                });
+                    detailCategorySelect.value = '기본'; // 자동 선택
+                }
             } else {
                 detailCategorySelect.disabled = true;
             }
+            
+            // 제품 코드 생성
+            generateProductCode();
         }
 
-        // 페이지 로드 시 사용자 상태 확인
-        window.addEventListener('load', () => {
-            checkUserStatus();
+        // 제품 코드 자동 생성
+        async function generateProductCode() {
+            const mainCategory = document.getElementById('productMainCategory').value;
+            const subCategory = document.getElementById('productSubCategory').value;
+            const detailCategory = document.getElementById('productDetailCategory').value;
+            
+            console.log('제품 코드 생성 시도:', { mainCategory, subCategory, detailCategory });
+            
+            if (mainCategory && subCategory && detailCategory) {
+                try {
+                    const response = await fetch('/api/products/generate-code', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            mainCategory,
+                            subCategory,
+                            detailCategory
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    console.log('제품 코드 생성 응답:', result);
+                    
+                    if (result.success) {
+                        document.getElementById('productCode').value = result.productCode;
+                        console.log('제품 코드 설정 완료:', result.productCode);
+                        showMessage('제품 코드가 자동 생성되었습니다.', 'success');
+                    } else {
+                        console.error('제품 코드 생성 실패:', result.message);
+                        document.getElementById('productCode').value = '';
+                        showMessage('제품 코드 생성에 실패했습니다: ' + result.message, 'error');
+                    }
+                } catch (error) {
+                    console.error('제품 코드 생성 오류:', error);
+                    document.getElementById('productCode').value = '';
+                    showMessage('제품 코드 생성 중 오류가 발생했습니다.', 'error');
+                }
+            } else {
+                console.log('카테고리 정보 부족으로 제품 코드 생성 안함');
+                showMessage('카테고리를 모두 선택한 후 자동 생성을 시도해주세요.', 'error');
+            }
+        }
+
+        // 제품 코드 중복 검증
+        async function validateProductCode(code) {
+            if (!code) return true;
+            
+            try {
+                const response = await fetch(`/api/products/check-code?code=${encodeURIComponent(code)}`, {
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                return result.success && !result.exists;
+            } catch (error) {
+                console.error('제품 코드 검증 오류:', error);
+                return true; // 오류 시 통과
+            }
+        }
+
+        // 제품 코드 입력 시 실시간 검증
+        document.addEventListener('DOMContentLoaded', function() {
+            const productCodeInput = document.getElementById('productCode');
+            if (productCodeInput) {
+                let validationTimeout;
+                
+                productCodeInput.addEventListener('input', function() {
+                    clearTimeout(validationTimeout);
+                    const code = this.value.trim();
+                    
+                    if (code) {
+                        validationTimeout = setTimeout(async () => {
+                            const isValid = await validateProductCode(code);
+                            if (!isValid) {
+                                this.style.borderColor = '#f44336';
+                                showMessage('이미 사용 중인 제품 코드입니다.', 'error');
+                            } else {
+                                this.style.borderColor = '#4caf50';
+                            }
+                        }, 500);
+                    } else {
+                        this.style.borderColor = '';
+                    }
+                });
+            }
+        });
+
+        // 페이지 로드 시 사용자 상태 확인 및 카테고리 데이터 로드
+        window.addEventListener('load', async () => {
+            await checkUserStatus();
+            await loadProductCategoryData();
         });
     </script>
 </body>

@@ -6,8 +6,9 @@ let currentStatus = '';
 let editingProductId = null;
 
 // 페이지 로드 시 초기화
-window.addEventListener('load', () => {
-    checkUserStatus();
+window.addEventListener('load', async () => {
+    await checkUserStatus();
+    await loadCategoryData();
     loadProducts();
 });
 
@@ -71,11 +72,12 @@ function displayProducts(products) {
     products.forEach(product => {
         const row = document.createElement('tr');
         row.innerHTML = `
+            <td><span class="product-code">${product.productCode || '-'}</span></td>
             <td>${product.name}</td>
             <td>${product.category}</td>
             <td>${product.brand || '-'}</td>
             <td>${product.price.toLocaleString('ko-KR')}원</td>
-            <td>${product.stockQuantity}</td>
+            <td class="${product.stockQuantity === 0 ? 'stock-empty' : 'stock-available'}">${product.stockQuantity}개</td>
             <td><span class="status-badge status-${product.status === '활성' ? 'active' : 'inactive'}">${product.status}</span></td>
             <td>
                 <div class="action-buttons">
@@ -135,30 +137,26 @@ function searchProducts() {
     loadProducts(1);
 }
 
-// 3단계 카테고리 데이터
-const categoryData = {
-    '하드웨어': {
-        'PC': ['데스크톱', '워크스테이션', '서버'],
-        '노트북': ['게이밍노트북', '비즈니스노트북', '울트라북'],
-        '모니터': ['게이밍모니터', '사무용모니터', '4K모니터'],
-        '기타': ['CPU', '메모리', '그래픽카드']
-    },
-    '소프트웨어': {
-        '운영체제': ['Windows', 'macOS', 'Linux'],
-        '오피스': ['Microsoft Office', '한글', 'LibreOffice'],
-        '보안': ['백신', '방화벽', '암호화'],
-        '기타': ['게임', '편집툴', '개발툴']
-    },
-    '액세서리': {
-        '키보드': ['기계식', '멤브레인', '무선'],
-        '마우스': ['게이밍마우스', '무선마우스', '트랙볼'],
-        '스피커': ['게이밍스피커', '블루투스스피커', '홈시어터'],
-        '기타': ['헤드셋', '웹캠', '충전기']
-    },
-    '기타': {
-        '기타': ['기타']
+// 3단계 카테고리 데이터 (서버에서 동적으로 로드)
+let categoryData = {};
+
+// 카테고리 데이터 로드
+async function loadCategoryData() {
+    try {
+        const response = await fetch('/api/categories', {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            categoryData = result.data;
+        } else {
+            console.error('카테고리 데이터 로드 실패:', result.message);
+        }
+    } catch (error) {
+        console.error('카테고리 데이터 로드 오류:', error);
     }
-};
+}
 
 // 하위 카테고리 업데이트
 function updateSubCategories() {
@@ -185,9 +183,11 @@ function updateSubCategories() {
         subCategorySelect.disabled = true;
     }
     
-    // 필터 초기화
-    currentCategory = '';
-    loadProducts(1);
+    // 소분류 초기화
+    detailCategorySelect.disabled = true;
+    
+    // 필터 적용
+    filterProducts();
 }
 
 // 상세 카테고리 업데이트
@@ -213,9 +213,8 @@ function updateDetailCategories() {
         detailCategorySelect.disabled = true;
     }
     
-    // 필터 초기화
-    currentCategory = '';
-    loadProducts(1);
+    // 필터 적용
+    filterProducts();
 }
 
 // 제품 필터링
@@ -261,12 +260,41 @@ function clearProductFilters() {
     loadProducts(1);
 }
 
+// 카테고리 옵션 로드
+async function loadCategoryOptions() {
+    try {
+        const response = await fetch('/api/categories', {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            const categorySelect = document.getElementById('productCategory');
+            categorySelect.innerHTML = '<option value="">카테고리 선택</option>';
+            
+            // 대분류 카테고리 옵션 추가
+            Object.keys(result.data).forEach(mainCategory => {
+                const option = document.createElement('option');
+                option.value = mainCategory;
+                option.textContent = mainCategory;
+                categorySelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('카테고리 로드 오류:', error);
+    }
+}
+
 // 새 제품 등록 모달 표시
-function showAddProductModal() {
+async function showAddProductModal() {
     document.getElementById('productModalTitle').textContent = '새 제품 등록';
     document.getElementById('productForm').reset();
     document.getElementById('imagePreview').style.display = 'none';
     editingProductId = null;
+    
+    // 카테고리 옵션 로드
+    await loadCategoryOptions();
+    
     document.getElementById('productModal').style.display = 'flex';
 }
 
@@ -281,7 +309,12 @@ async function editProduct(productId) {
         if (result.success) {
             const product = result.data;
             document.getElementById('productModalTitle').textContent = '제품 정보 수정';
+            
+            // 카테고리 옵션 로드
+            await loadCategoryOptions();
+            
             document.getElementById('productName').value = product.name;
+            document.getElementById('productCode').value = product.productCode || '';
             document.getElementById('productCategory').value = product.category;
             document.getElementById('productBrand').value = product.brand || '';
             document.getElementById('productPrice').value = product.price;
@@ -356,10 +389,11 @@ async function viewProductDetail(productId) {
                     <div>
                         <h3 style="margin-top: 0;">${product.name}</h3>
                         <div style="display: grid; grid-template-columns: 120px 1fr; gap: 15px; margin-top: 20px;">
+                            <strong>제품코드:</strong><span class="product-code">${product.productCode || '-'}</span>
                             <strong>카테고리:</strong><span>${product.category}</span>
                             <strong>브랜드:</strong><span>${product.brand || '-'}</span>
                             <strong>가격:</strong><span style="color: #2196F3; font-size: 1.2em; font-weight: bold;">${product.price.toLocaleString('ko-KR')}원</span>
-                            <strong>재고수량:</strong><span>${product.stockQuantity}개</span>
+                            <strong>재고수량:</strong><span class="${product.stockQuantity === 0 ? 'stock-empty' : 'stock-available'}">${product.stockQuantity}개</span>
                             <strong>상태:</strong><span><span class="status-badge status-${product.status === '활성' ? 'active' : 'inactive'}">${product.status}</span></span>
                             <strong>등록일:</strong><span>${new Date(product.registrationDate).toLocaleDateString('ko-KR')}</span>
                         </div>
@@ -478,6 +512,133 @@ function showMessage(message, type) {
             messageDiv.remove();
         }
     }, 3000);
+}
+
+// 카테고리 추가 모달 표시
+function showCategoryModal() {
+    document.getElementById('categoryModal').style.display = 'flex';
+    document.getElementById('categoryForm').reset();
+    updateCategoryForm();
+}
+
+// 카테고리 모달 닫기
+function closeCategoryModal() {
+    document.getElementById('categoryModal').style.display = 'none';
+    document.getElementById('categoryForm').reset();
+}
+
+// 카테고리 폼 업데이트
+function updateCategoryForm() {
+    const level = document.getElementById('categoryLevel').value;
+    const parentGroup = document.getElementById('parentCategoryGroup');
+    const subParentGroup = document.getElementById('subParentCategoryGroup');
+    const parentSelect = document.getElementById('parentCategory');
+    const subParentSelect = document.getElementById('subParentCategory');
+    
+    // 모든 그룹 숨기기
+    parentGroup.style.display = 'none';
+    subParentGroup.style.display = 'none';
+    
+    // 레벨에 따라 필요한 필드 표시
+    if (level === 'sub') {
+        parentGroup.style.display = 'block';
+        updateParentCategoryOptions();
+    } else if (level === 'detail') {
+        parentGroup.style.display = 'block';
+        subParentGroup.style.display = 'block';
+        updateParentCategoryOptions();
+    }
+}
+
+// 상위 카테고리 옵션 업데이트
+function updateParentCategoryOptions() {
+    const parentSelect = document.getElementById('parentCategory');
+    const subParentSelect = document.getElementById('subParentCategory');
+    const level = document.getElementById('categoryLevel').value;
+    
+    // 상위 카테고리 초기화
+    parentSelect.innerHTML = '<option value="">상위 카테고리 선택</option>';
+    subParentSelect.innerHTML = '<option value="">중분류 선택</option>';
+    
+    if (level === 'sub') {
+        // 대분류 옵션 추가
+        Object.keys(categoryData).forEach(mainCategory => {
+            const option = document.createElement('option');
+            option.value = mainCategory;
+            option.textContent = mainCategory;
+            parentSelect.appendChild(option);
+        });
+    } else if (level === 'detail') {
+        // 대분류 옵션 추가
+        Object.keys(categoryData).forEach(mainCategory => {
+            const option = document.createElement('option');
+            option.value = mainCategory;
+            option.textContent = mainCategory;
+            parentSelect.appendChild(option);
+        });
+        
+        // 대분류 선택 시 중분류 업데이트
+        parentSelect.onchange = function() {
+            const selectedMain = this.value;
+            subParentSelect.innerHTML = '<option value="">중분류 선택</option>';
+            
+            if (selectedMain && categoryData[selectedMain]) {
+                Object.keys(categoryData[selectedMain]).forEach(subCategory => {
+                    const option = document.createElement('option');
+                    option.value = subCategory;
+                    option.textContent = subCategory;
+                    subParentSelect.appendChild(option);
+                });
+            }
+        };
+    }
+}
+
+// 카테고리 폼 제출
+document.getElementById('categoryForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const categoryData = Object.fromEntries(formData);
+    
+    try {
+        const response = await fetch('/api/categories', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify(categoryData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('카테고리가 성공적으로 추가되었습니다!', 'success');
+            closeCategoryModal();
+            
+            // 카테고리 데이터 업데이트
+            if (result.categoryData) {
+                updateCategoryData(result.categoryData);
+            }
+            
+            // 필터 새로고침
+            updateSubCategories();
+        } else {
+            showMessage(result.message || '카테고리 추가에 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('카테고리 추가 오류:', error);
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
+});
+
+// 카테고리 데이터 업데이트
+function updateCategoryData(newCategoryData) {
+    // 서버에서 받은 새로운 카테고리 데이터로 업데이트
+    if (newCategoryData) {
+        Object.assign(categoryData, newCategoryData);
+    }
 }
 
 // 로그아웃

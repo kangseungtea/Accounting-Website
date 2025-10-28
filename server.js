@@ -335,11 +335,30 @@ function requireAuth(req, res, next) {
 app.get('/api/customers', requireAuth, (req, res) => {
   const { page = 1, limit = 10, search = '', status = '' } = req.query;
   
-  let filteredCustomers = customers;
+  // 파일에서 최신 고객 데이터 로드
+  const CUSTOMERS_FILE = path.join(DATA_DIR, 'customers.json');
+  let filteredCustomers = loadData(CUSTOMERS_FILE, customers);
+  
+  // 구매이력에서 총 구매금액 계산
+  const PURCHASES_FILE = path.join(DATA_DIR, 'purchases.json');
+  const purchases = loadData(PURCHASES_FILE, purchaseRecords);
+  
+  // 각 고객의 총 구매금액 계산
+  filteredCustomers = filteredCustomers.map(customer => {
+    const customerPurchases = purchases.filter(p => p.customerId === customer.id);
+    const totalSpent = customerPurchases.reduce((sum, purchase) => {
+      return sum + (purchase.totalAmount || 0);
+    }, 0);
+    
+    return {
+      ...customer,
+      totalSpent: totalSpent
+    };
+  });
   
   // 검색 필터링
   if (search) {
-    filteredCustomers = customers.filter(customer => 
+    filteredCustomers = filteredCustomers.filter(customer => 
       customer.name.includes(search) || 
       customer.phone.includes(search) ||
       customer.email.includes(search)
@@ -728,7 +747,9 @@ app.put('/api/repairs/:id/status', requireAuth, (req, res) => {
 app.get('/api/purchases', requireAuth, (req, res) => {
   const { page = 1, limit = 10, customerId, type, search = '' } = req.query;
   
-  let filteredPurchases = purchaseRecords;
+  // 파일에서 구매 이력 데이터 로드
+  const PURCHASES_FILE = path.join(DATA_DIR, 'purchases.json');
+  let filteredPurchases = loadData(PURCHASES_FILE, purchaseRecords);
   
   if (customerId) {
     filteredPurchases = filteredPurchases.filter(p => p.customerId === parseInt(customerId));
@@ -771,9 +792,48 @@ app.get('/api/purchases', requireAuth, (req, res) => {
   });
 });
 
+// 구매이력 코드 생성 API
+app.post('/api/purchases/generate-code', requireAuth, (req, res) => {
+  const { type } = req.body; // '판매' 또는 '매입'
+  
+  if (!type) {
+    return res.json({ success: false, message: '구매 유형이 필요합니다.' });
+  }
+  
+  // 구매이력 코드 형식: [유형코드][년월일][순번]
+  // 판매: S, 매입: P
+  const typeCode = type === '판매' ? 'S' : 'P';
+  const today = new Date();
+  const dateStr = today.getFullYear().toString().substr(-2) + 
+                  (today.getMonth() + 1).toString().padStart(2, '0') + 
+                  today.getDate().toString().padStart(2, '0');
+  
+  // 기존 구매이력에서 같은 날짜의 마지막 순번 찾기
+  const PURCHASES_FILE = path.join(DATA_DIR, 'purchases.json');
+  const existingPurchases = loadData(PURCHASES_FILE, purchaseRecords);
+  const todayPurchases = existingPurchases.filter(p => {
+    const purchaseDate = new Date(p.purchaseDate);
+    return purchaseDate.getFullYear() === today.getFullYear() &&
+           purchaseDate.getMonth() === today.getMonth() &&
+           purchaseDate.getDate() === today.getDate() &&
+           p.purchaseCode && p.purchaseCode.startsWith(typeCode + dateStr);
+  });
+  
+  let nextNumber = 1;
+  if (todayPurchases.length > 0) {
+    const lastCode = todayPurchases[todayPurchases.length - 1].purchaseCode;
+    const lastNumber = parseInt(lastCode.substring(5)) || 0; // typeCode(1) + dateStr(4) = 5자리
+    nextNumber = lastNumber + 1;
+  }
+  
+  const purchaseCode = typeCode + dateStr + nextNumber.toString().padStart(3, '0');
+  
+  res.json({ success: true, purchaseCode });
+});
+
 // 구매 이력 등록
 app.post('/api/purchases', requireAuth, (req, res) => {
-  const { customerId, purchaseDate, type, items, paymentMethod, notes } = req.body;
+  const { customerId, purchaseDate, type, items, paymentMethod, notes, taxInfo, purchaseCode } = req.body;
   
   if (!customerId || !purchaseDate || !type || !items || !Array.isArray(items)) {
     return res.json({ success: false, message: '고객ID, 구매일, 구분, 상품목록은 필수입니다.' });
@@ -781,6 +841,77 @@ app.post('/api/purchases', requireAuth, (req, res) => {
   
   const totalAmount = items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
   
+  // 구매이력 코드가 없으면 자동 생성
+  let finalPurchaseCode = purchaseCode;
+  if (!finalPurchaseCode) {
+    const typeCode = type === '판매' ? 'S' : 'P';
+    const today = new Date();
+    const dateStr = today.getFullYear().toString().substr(-2) + 
+                    (today.getMonth() + 1).toString().padStart(2, '0') + 
+                    today.getDate().toString().padStart(2, '0');
+    
+    const PURCHASES_FILE = path.join(DATA_DIR, 'purchases.json');
+    const existingPurchases = loadData(PURCHASES_FILE, purchaseRecords);
+    const todayPurchases = existingPurchases.filter(p => {
+      const purchaseDate = new Date(p.purchaseDate);
+      return purchaseDate.getFullYear() === today.getFullYear() &&
+             purchaseDate.getMonth() === today.getMonth() &&
+             purchaseDate.getDate() === today.getDate() &&
+             p.purchaseCode && p.purchaseCode.startsWith(typeCode + dateStr);
+    });
+    
+    let nextNumber = 1;
+    if (todayPurchases.length > 0) {
+      const lastCode = todayPurchases[todayPurchases.length - 1].purchaseCode;
+      const lastNumber = parseInt(lastCode.substring(5)) || 0;
+      nextNumber = lastNumber + 1;
+    }
+    
+    finalPurchaseCode = typeCode + dateStr + nextNumber.toString().padStart(3, '0');
+  }
+  
+  // 제품 재고 업데이트
+  const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
+  let products = loadData(PRODUCTS_FILE, []);
+  let stockUpdated = false;
+  
+  if (type === '판매') {
+    // 판매 시 재고 차감
+    for (const item of items) {
+      if (item.productId) {
+        const productIndex = products.findIndex(p => p.id == item.productId);
+        if (productIndex !== -1) {
+          const currentStock = products[productIndex].stockQuantity || 0;
+          const newStock = Math.max(0, currentStock - item.quantity);
+          products[productIndex].stockQuantity = newStock;
+          stockUpdated = true;
+          console.log(`제품 ${products[productIndex].name} 재고 차감: ${currentStock} → ${newStock} (${item.quantity}개 판매)`);
+        }
+      }
+    }
+  } else if (type === '매입') {
+    // 매입 시 재고 증가
+    for (const item of items) {
+      if (item.productId) {
+        const productIndex = products.findIndex(p => p.id == item.productId);
+        if (productIndex !== -1) {
+          const currentStock = products[productIndex].stockQuantity || 0;
+          const newStock = currentStock + item.quantity;
+          products[productIndex].stockQuantity = newStock;
+          stockUpdated = true;
+          console.log(`제품 ${products[productIndex].name} 재고 증가: ${currentStock} → ${newStock} (${item.quantity}개 매입)`);
+        }
+      }
+    }
+  }
+  
+  // 제품 재고가 업데이트된 경우 저장
+  if (stockUpdated) {
+    if (!saveData(PRODUCTS_FILE, products)) {
+      return res.json({ success: false, message: '제품 재고 업데이트에 실패했습니다.' });
+    }
+  }
+
   const newPurchase = {
     id: Date.now(),
     customerId: parseInt(customerId),
@@ -790,11 +921,160 @@ app.post('/api/purchases', requireAuth, (req, res) => {
     totalAmount,
     paymentMethod: paymentMethod || '현금',
     status: '완료',
-    notes: notes || ''
+    notes: notes || '',
+    taxInfo: taxInfo || null,
+    purchaseCode: finalPurchaseCode
   };
   
   purchaseRecords.push(newPurchase);
-  res.json({ success: true, message: '구매 이력이 등록되었습니다.', data: newPurchase });
+  
+  // 데이터 저장
+  const PURCHASES_FILE = path.join(DATA_DIR, 'purchases.json');
+  if (saveData(PURCHASES_FILE, purchaseRecords)) {
+    res.json({ success: true, message: '구매 이력이 등록되었습니다.', data: newPurchase });
+  } else {
+    res.json({ success: false, message: '데이터 저장에 실패했습니다.' });
+  }
+});
+
+// 제품 코드 생성용 카테고리 매핑 (실제 카테고리 데이터에 맞춤)
+const categoryCodeMapping = {
+  '컴퓨터부품': {
+    code: '10',
+    subCategories: {
+      'CPU': { code: '11', detailCategories: { '기본': '110' } },
+      '메모리': { code: '12', detailCategories: { '기본': '120' } },
+      '그래픽카드': { code: '13', detailCategories: { '기본': '130' } },
+      '메인보드': { code: '14', detailCategories: { '기본': '140' } },
+      '파워': { code: '15', detailCategories: { '기본': '150' } },
+      '케이스': { code: '16', detailCategories: { '기본': '160' } },
+      '팬': { code: '17', detailCategories: { '기본': '170' } },
+      '하드디스크': { code: '18', detailCategories: { '기본': '180' } },
+      'SSD': { code: '19', detailCategories: { '기본': '190' } },
+      '광학드라이브': { code: '20', detailCategories: { '기본': '200' } },
+      '기타': { code: '21', detailCategories: { '기본': '210' } }
+    }
+  },
+  '소프트웨어': {
+    code: '30',
+    subCategories: {
+      '운영체제': { code: '31', detailCategories: { 'Windows': '311', 'macOS': '312', 'Linux': '313' } },
+      '오피스': { code: '32', detailCategories: { 'Microsoft Office': '321', '한글': '322', 'LibreOffice': '323' } },
+      '보안': { code: '33', detailCategories: { '백신': '331', '방화벽': '332', '암호화': '333' } },
+      '기타': { code: '34', detailCategories: { '게임': '341', '편집툴': '342', '개발툴': '343' } }
+    }
+  },
+  '주변기기': {
+    code: '50',
+    subCategories: {
+      '키보드': { code: '51', detailCategories: { '기계식': '511', '멤브레인': '512', '무선': '513' } },
+      '마우스': { code: '52', detailCategories: { '게이밍마우스': '521', '무선마우스': '522', '트랙볼': '523' } },
+      '스피커': { code: '53', detailCategories: { '게이밍스피커': '531', '블루투스스피커': '532', '홈시어터': '533' } }
+    }
+  }
+};
+
+// 제품 코드 생성 API
+app.post('/api/products/generate-code', requireAuth, (req, res) => {
+  const { mainCategory, subCategory, detailCategory } = req.body;
+  
+  console.log('제품 코드 생성 요청:', { mainCategory, subCategory, detailCategory });
+  
+  if (!mainCategory || !subCategory || !detailCategory) {
+    return res.json({ success: false, message: '카테고리 정보가 부족합니다.' });
+  }
+  
+  const mainCat = categoryCodeMapping[mainCategory];
+  if (!mainCat) {
+    console.log('유효하지 않은 대분류:', mainCategory);
+    return res.json({ success: false, message: '유효하지 않은 대분류입니다.' });
+  }
+  
+  const subCat = mainCat.subCategories[subCategory];
+  if (!subCat) {
+    console.log('유효하지 않은 중분류:', subCategory);
+    return res.json({ success: false, message: '유효하지 않은 중분류입니다.' });
+  }
+  
+  const detailCode = subCat.detailCategories[detailCategory];
+  if (!detailCode) {
+    console.log('유효하지 않은 소분류:', detailCategory);
+    return res.json({ success: false, message: '유효하지 않은 소분류입니다.' });
+  }
+  
+  // 기존 제품에서 해당 카테고리의 마지막 순번 찾기
+  const categoryPrefix = mainCat.code + subCat.code + detailCode;
+  const existingProducts = products.filter(p => p.productCode && p.productCode.startsWith(categoryPrefix));
+  
+  let nextNumber = 1;
+  if (existingProducts.length > 0) {
+    const lastCode = existingProducts[existingProducts.length - 1].productCode;
+    const lastNumber = parseInt(lastCode.substring(categoryPrefix.length)) || 0;
+    nextNumber = lastNumber + 1;
+  }
+  
+  const productCode = categoryPrefix + nextNumber.toString().padStart(2, '0');
+  
+  console.log('생성된 제품 코드:', productCode);
+  
+  res.json({ success: true, productCode });
+});
+
+// 제품 코드 중복 검증 API
+app.get('/api/products/check-code', requireAuth, (req, res) => {
+  const { code } = req.query;
+  
+  if (!code) {
+    return res.json({ success: false, message: '제품 코드가 필요합니다.' });
+  }
+  
+  const existingProduct = products.find(p => p.productCode === code);
+  
+  res.json({ 
+    success: true, 
+    exists: !!existingProduct,
+    message: existingProduct ? '이미 사용 중인 제품 코드입니다.' : '사용 가능한 제품 코드입니다.'
+  });
+});
+
+// 기존 제품들에 제품 코드 추가 API (개발용)
+app.post('/api/products/add-codes', requireAuth, (req, res) => {
+  let updatedCount = 0;
+  
+  products.forEach((product, index) => {
+    if (!product.productCode) {
+      // 카테고리별로 기본 코드 할당
+      let categoryPrefix = '9999'; // 기본값
+      
+      if (product.category === '컴퓨터부품') {
+        categoryPrefix = '1011'; // CPU 기본
+      } else if (product.category === '소프트웨어') {
+        categoryPrefix = '3031'; // 운영체제 기본
+      } else if (product.category === '주변기기') {
+        categoryPrefix = '5051'; // 키보드 기본
+      }
+      
+      // 기존 제품들 중 같은 카테고리에서 마지막 번호 찾기
+      const sameCategoryProducts = products.filter(p => p.productCode && p.productCode.startsWith(categoryPrefix));
+      let nextNumber = 1;
+      
+      if (sameCategoryProducts.length > 0) {
+        const lastCode = sameCategoryProducts[sameCategoryProducts.length - 1].productCode;
+        const lastNumber = parseInt(lastCode.substring(categoryPrefix.length)) || 0;
+        nextNumber = lastNumber + 1;
+      }
+      
+      product.productCode = categoryPrefix + nextNumber.toString().padStart(2, '0');
+      updatedCount++;
+    }
+  });
+  
+  // 데이터 저장
+  if (saveData(PRODUCTS_FILE, products)) {
+    res.json({ success: true, message: `${updatedCount}개 제품에 코드가 추가되었습니다.` });
+  } else {
+    res.json({ success: false, message: '데이터 저장에 실패했습니다.' });
+  }
 });
 
 // 제품 관리 API
@@ -802,7 +1082,9 @@ app.post('/api/purchases', requireAuth, (req, res) => {
 app.get('/api/products', requireAuth, (req, res) => {
   const { page = 1, limit = 10, search = '', category = '', status = '' } = req.query;
   
-  let filteredProducts = products;
+  // 파일에서 최신 제품 데이터 로드
+  const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
+  let filteredProducts = loadData(PRODUCTS_FILE, products);
   
   // 검색 필터링
   if (search) {
@@ -846,6 +1128,8 @@ app.get('/api/products', requireAuth, (req, res) => {
 // 제품 상세 조회
 app.get('/api/products/:id', requireAuth, (req, res) => {
   const productId = parseInt(req.params.id);
+  const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
+  const products = loadData(PRODUCTS_FILE, []);
   const product = products.find(p => p.id === productId);
   
   if (product) {
@@ -857,11 +1141,11 @@ app.get('/api/products/:id', requireAuth, (req, res) => {
 
 // 제품 등록
 app.post('/api/products', requireAuth, (req, res) => {
-  const { name, category, brand, price, stockQuantity, status, description } = req.body;
+  const { name, category, brand, price, stockQuantity, status, description, productCode } = req.body;
   
   // 필수 필드 검증
-  if (!name || !category || price === undefined || stockQuantity === undefined) {
-    return res.json({ success: false, message: '제품명, 카테고리, 가격, 재고수량은 필수입니다.' });
+  if (!name || !category || price === undefined) {
+    return res.json({ success: false, message: '제품명, 카테고리, 가격은 필수입니다.' });
   }
   
   // 새 제품 생성
@@ -871,10 +1155,11 @@ app.post('/api/products', requireAuth, (req, res) => {
     category,
     brand: brand || '',
     price: parseInt(price),
-    stockQuantity: parseInt(stockQuantity),
+    stockQuantity: stockQuantity !== undefined ? parseInt(stockQuantity) : 0,
     status: status || '활성',
     description: description || '',
     imageUrl: '',
+    productCode: productCode || '',
     registrationDate: new Date()
   };
   
@@ -933,6 +1218,378 @@ app.delete('/api/products/:id', requireAuth, (req, res) => {
   // 데이터 저장
   if (saveData(PRODUCTS_FILE, products)) {
     res.json({ success: true, message: '제품이 삭제되었습니다.' });
+  } else {
+    res.json({ success: false, message: '데이터 저장에 실패했습니다.' });
+  }
+});
+
+// 카테고리 관리 API
+// 카테고리 추가
+app.post('/api/categories', requireAuth, (req, res) => {
+  const { level, parentCategory, subParentCategory, categoryName, categoryDescription } = req.body;
+  
+  // 필수 필드 검증
+  if (!level || !categoryName) {
+    return res.json({ success: false, message: '카테고리 레벨과 이름은 필수입니다.' });
+  }
+  
+  // 카테고리 데이터 파일 경로
+  const CATEGORIES_FILE = path.join(DATA_DIR, 'categories.json');
+  
+  // 기본 카테고리 데이터
+  const defaultCategories = {
+    '컴퓨터부품': {
+      'CPU': [],
+      '메모리': [],
+      '그래픽카드': [],
+      '메인보드': [],
+      '파워': [],
+      '케이스': [],
+      '팬': [],
+      '하드디스크': [],
+      'SSD': [],
+      '광학드라이브': [],
+      '기타': []
+    },
+    '소프트웨어': {
+      '운영체제': ['Windows', 'macOS', 'Linux'],
+      '오피스': ['Microsoft Office', '한글', 'LibreOffice'],
+      '보안': ['백신', '방화벽', '암호화'],
+      '기타': ['게임', '편집툴', '개발툴']
+    },
+    '주변기기': {
+      '키보드': ['기계식', '멤브레인', '무선'],
+      '마우스': ['게이밍마우스', '무선마우스', '트랙볼'],
+      '스피커': ['게이밍스피커', '블루투스스피커', '홈시어터'],
+      
+    },
+  };
+
+  // 기존 카테고리 데이터 로드 (기존 데이터 우선)
+  let existingCategories = loadData(CATEGORIES_FILE, {});
+  let categories = { ...defaultCategories };
+  
+  // 기존 데이터에서 기본 카테고리가 아닌 새로운 카테고리만 추가
+  Object.keys(existingCategories).forEach(category => {
+    if (!defaultCategories[category]) {
+      categories[category] = existingCategories[category];
+    } else {
+      // 기본 카테고리가 있는 경우, 기존 데이터로 덮어쓰기
+      categories[category] = existingCategories[category];
+    }
+  });
+  
+  try {
+    if (level === 'main') {
+      // 대분류 추가
+      if (categories[categoryName]) {
+        return res.json({ success: false, message: '이미 존재하는 대분류입니다.' });
+      }
+      categories[categoryName] = {};
+      
+    } else if (level === 'sub') {
+      // 중분류 추가
+      if (!parentCategory || !categories[parentCategory]) {
+        return res.json({ success: false, message: '유효하지 않은 상위 카테고리입니다.' });
+      }
+      if (categories[parentCategory][categoryName]) {
+        return res.json({ success: false, message: '이미 존재하는 중분류입니다.' });
+      }
+      categories[parentCategory][categoryName] = [];
+      
+    } else if (level === 'detail') {
+      // 소분류 추가
+      if (!parentCategory || !subParentCategory || !categories[parentCategory] || !categories[parentCategory][subParentCategory]) {
+        return res.json({ success: false, message: '유효하지 않은 상위 카테고리입니다.' });
+      }
+      if (categories[parentCategory][subParentCategory].includes(categoryName)) {
+        return res.json({ success: false, message: '이미 존재하는 소분류입니다.' });
+      }
+      categories[parentCategory][subParentCategory].push(categoryName);
+    }
+    
+    // 데이터 저장
+    if (saveData(CATEGORIES_FILE, categories)) {
+      res.json({ 
+        success: true, 
+        message: '카테고리가 성공적으로 추가되었습니다.',
+        categoryData: categories
+      });
+    } else {
+      res.json({ success: false, message: '데이터 저장에 실패했습니다.' });
+    }
+  } catch (error) {
+    console.error('카테고리 추가 오류:', error);
+    res.json({ success: false, message: '카테고리 추가 중 오류가 발생했습니다.' });
+  }
+});
+
+// 카테고리 목록 조회
+app.get('/api/categories', requireAuth, (req, res) => {
+  const CATEGORIES_FILE = path.join(DATA_DIR, 'categories.json');
+  
+  // 기본 카테고리 데이터
+  const defaultCategories = {
+    '컴퓨터부품': {
+      'CPU': [],
+      '메모리': [],
+      '그래픽카드': [],
+      '메인보드': [],
+      '파워': [],
+      '케이스': [],
+      '팬': [],
+      '하드디스크': [],
+      'SSD': [],
+      '광학드라이브': [],
+      '기타': []
+    },
+    '소프트웨어': {
+      '운영체제': ['Windows', 'macOS', 'Linux'],
+      '오피스': ['Microsoft Office', '한글', 'LibreOffice'],
+      '보안': ['백신', '방화벽', '암호화'],
+      '기타': ['게임', '편집툴', '개발툴']
+    },
+    '주변기기': {
+      '키보드': ['기계식', '멤브레인', '무선'],
+      '마우스': ['게이밍마우스', '무선마우스', '트랙볼'],
+      '스피커': ['게이밍스피커', '블루투스스피커', '홈시어터']
+    }
+  };
+
+  // 기존 카테고리 데이터 로드 (기존 데이터 우선)
+  let existingCategories = loadData(CATEGORIES_FILE, {});
+  let categories = { ...defaultCategories };
+  
+  // 기존 데이터에서 기본 카테고리가 아닌 새로운 카테고리만 추가
+  Object.keys(existingCategories).forEach(category => {
+    if (!defaultCategories[category]) {
+      categories[category] = existingCategories[category];
+    } else {
+      // 기본 카테고리가 있는 경우, 기존 데이터로 덮어쓰기
+      categories[category] = existingCategories[category];
+    }
+  });
+  
+  res.json({ success: true, data: categories });
+});
+
+// 구매 이력 단일 조회
+app.get('/api/purchases/:id', requireAuth, (req, res) => {
+  const purchaseId = parseInt(req.params.id);
+  const PURCHASES_FILE = path.join(DATA_DIR, 'purchases.json');
+  
+  let purchases = loadData(PURCHASES_FILE, purchaseRecords);
+  const purchase = purchases.find(p => p.id === purchaseId);
+  
+  if (purchase) {
+    res.json({ success: true, data: purchase });
+  } else {
+    res.json({ success: false, message: '구매 이력을 찾을 수 없습니다.' });
+  }
+});
+
+// 구매 이력 수정
+app.put('/api/purchases/:id', requireAuth, (req, res) => {
+  const purchaseId = parseInt(req.params.id);
+  const { customerId, purchaseDate, type, items, paymentMethod, notes, taxInfo } = req.body;
+  
+  if (!customerId || !purchaseDate || !type || !items || !Array.isArray(items)) {
+    return res.json({ success: false, message: '고객ID, 구매일, 구분, 상품목록은 필수입니다.' });
+  }
+  
+  const PURCHASES_FILE = path.join(DATA_DIR, 'purchases.json');
+  let purchases = loadData(PURCHASES_FILE, purchaseRecords);
+  const purchaseIndex = purchases.findIndex(p => p.id === purchaseId);
+  
+  if (purchaseIndex === -1) {
+    return res.json({ success: false, message: '구매 이력을 찾을 수 없습니다.' });
+  }
+  
+  const totalAmount = items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+  
+  // 기존 구매이력의 재고 복원 (이전 재고 변경사항 되돌리기)
+  const oldPurchase = purchases[purchaseIndex];
+  const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
+  let products = loadData(PRODUCTS_FILE, []);
+  
+  // 기존 구매이력의 재고 변경사항 되돌리기
+  if (oldPurchase.type === '판매') {
+    // 기존 판매 → 재고 복원 (증가)
+    for (const item of oldPurchase.items) {
+      if (item.productId) {
+        const productIndex = products.findIndex(p => p.id == item.productId);
+        if (productIndex !== -1) {
+          const currentStock = products[productIndex].stockQuantity || 0;
+          products[productIndex].stockQuantity = currentStock + item.quantity;
+          console.log(`제품 ${products[productIndex].name} 재고 복원: ${currentStock} → ${products[productIndex].stockQuantity} (기존 판매 ${item.quantity}개 복원)`);
+        }
+      }
+    }
+  } else if (oldPurchase.type === '매입') {
+    // 기존 매입 → 재고 복원 (차감)
+    for (const item of oldPurchase.items) {
+      if (item.productId) {
+        const productIndex = products.findIndex(p => p.id == item.productId);
+        if (productIndex !== -1) {
+          const currentStock = products[productIndex].stockQuantity || 0;
+          products[productIndex].stockQuantity = Math.max(0, currentStock - item.quantity);
+          console.log(`제품 ${products[productIndex].name} 재고 복원: ${currentStock} → ${products[productIndex].stockQuantity} (기존 매입 ${item.quantity}개 복원)`);
+        }
+      }
+    }
+  }
+  
+  // 새로운 구매이력에 따른 재고 업데이트
+  if (type === '판매') {
+    // 판매 시 재고 차감
+    for (const item of items) {
+      if (item.productId) {
+        const productIndex = products.findIndex(p => p.id == item.productId);
+        if (productIndex !== -1) {
+          const currentStock = products[productIndex].stockQuantity || 0;
+          const newStock = Math.max(0, currentStock - item.quantity);
+          products[productIndex].stockQuantity = newStock;
+          console.log(`제품 ${products[productIndex].name} 재고 차감: ${currentStock} → ${newStock} (${item.quantity}개 판매)`);
+        }
+      }
+    }
+  } else if (type === '매입') {
+    // 매입 시 재고 증가
+    for (const item of items) {
+      if (item.productId) {
+        const productIndex = products.findIndex(p => p.id == item.productId);
+        if (productIndex !== -1) {
+          const currentStock = products[productIndex].stockQuantity || 0;
+          const newStock = currentStock + item.quantity;
+          products[productIndex].stockQuantity = newStock;
+          console.log(`제품 ${products[productIndex].name} 재고 증가: ${currentStock} → ${newStock} (${item.quantity}개 매입)`);
+        }
+      }
+    }
+  }
+  
+  // 제품 재고 저장
+  if (!saveData(PRODUCTS_FILE, products)) {
+    return res.json({ success: false, message: '제품 재고 업데이트에 실패했습니다.' });
+  }
+  
+  purchases[purchaseIndex] = {
+    ...purchases[purchaseIndex],
+    customerId: parseInt(customerId),
+    purchaseDate: new Date(purchaseDate),
+    type,
+    items,
+    totalAmount,
+    paymentMethod: paymentMethod || '현금',
+    notes: notes || '',
+    taxInfo: taxInfo || null
+  };
+  
+  // 데이터 저장
+  if (saveData(PURCHASES_FILE, purchases)) {
+    res.json({ success: true, message: '구매 이력이 수정되었습니다.', data: purchases[purchaseIndex] });
+  } else {
+    res.json({ success: false, message: '데이터 저장에 실패했습니다.' });
+  }
+});
+
+// 기존 구매이력에 코드 추가 API (개발용)
+app.post('/api/purchases/add-codes', requireAuth, (req, res) => {
+  const PURCHASES_FILE = path.join(DATA_DIR, 'purchases.json');
+  let purchases = loadData(PURCHASES_FILE, purchaseRecords);
+  let updatedCount = 0;
+  
+  purchases.forEach((purchase, index) => {
+    if (!purchase.purchaseCode) {
+      // 구매이력 코드 형식: [유형코드][년월일][순번]
+      const typeCode = purchase.type === '판매' ? 'S' : 'P';
+      const purchaseDate = new Date(purchase.purchaseDate);
+      const dateStr = purchaseDate.getFullYear().toString().substr(-2) + 
+                      (purchaseDate.getMonth() + 1).toString().padStart(2, '0') + 
+                      purchaseDate.getDate().toString().padStart(2, '0');
+      
+      // 같은 날짜의 기존 구매이력에서 마지막 번호 찾기
+      const sameDatePurchases = purchases.filter(p => {
+        const pDate = new Date(p.purchaseDate);
+        return pDate.getFullYear() === purchaseDate.getFullYear() &&
+               pDate.getMonth() === purchaseDate.getMonth() &&
+               pDate.getDate() === purchaseDate.getDate() &&
+               p.purchaseCode && p.purchaseCode.startsWith(typeCode + dateStr);
+      });
+      
+      let nextNumber = 1;
+      if (sameDatePurchases.length > 0) {
+        const lastCode = sameDatePurchases[sameDatePurchases.length - 1].purchaseCode;
+        const lastNumber = parseInt(lastCode.substring(5)) || 0;
+        nextNumber = lastNumber + 1;
+      }
+      
+      purchase.purchaseCode = typeCode + dateStr + nextNumber.toString().padStart(3, '0');
+      updatedCount++;
+    }
+  });
+  
+  // 데이터 저장
+  if (saveData(PURCHASES_FILE, purchases)) {
+    res.json({ success: true, message: `${updatedCount}개 구매이력에 코드가 추가되었습니다.` });
+  } else {
+    res.json({ success: false, message: '데이터 저장에 실패했습니다.' });
+  }
+});
+
+// 구매 이력 삭제
+app.delete('/api/purchases/:id', requireAuth, (req, res) => {
+  const purchaseId = parseInt(req.params.id);
+  const PURCHASES_FILE = path.join(DATA_DIR, 'purchases.json');
+  
+  let purchases = loadData(PURCHASES_FILE, purchaseRecords);
+  const purchaseIndex = purchases.findIndex(p => p.id === purchaseId);
+  
+  if (purchaseIndex === -1) {
+    return res.json({ success: false, message: '구매 이력을 찾을 수 없습니다.' });
+  }
+  
+  // 삭제할 구매이력의 재고 복원
+  const purchaseToDelete = purchases[purchaseIndex];
+  const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
+  let products = loadData(PRODUCTS_FILE, []);
+  
+  if (purchaseToDelete.type === '판매') {
+    // 판매 삭제 → 재고 복원 (증가)
+    for (const item of purchaseToDelete.items) {
+      if (item.productId) {
+        const productIndex = products.findIndex(p => p.id == item.productId);
+        if (productIndex !== -1) {
+          const currentStock = products[productIndex].stockQuantity || 0;
+          products[productIndex].stockQuantity = currentStock + item.quantity;
+          console.log(`제품 ${products[productIndex].name} 재고 복원: ${currentStock} → ${products[productIndex].stockQuantity} (판매 삭제로 ${item.quantity}개 복원)`);
+        }
+      }
+    }
+  } else if (purchaseToDelete.type === '매입') {
+    // 매입 삭제 → 재고 복원 (차감)
+    for (const item of purchaseToDelete.items) {
+      if (item.productId) {
+        const productIndex = products.findIndex(p => p.id == item.productId);
+        if (productIndex !== -1) {
+          const currentStock = products[productIndex].stockQuantity || 0;
+          products[productIndex].stockQuantity = Math.max(0, currentStock - item.quantity);
+          console.log(`제품 ${products[productIndex].name} 재고 복원: ${currentStock} → ${products[productIndex].stockQuantity} (매입 삭제로 ${item.quantity}개 복원)`);
+        }
+      }
+    }
+  }
+  
+  // 제품 재고 저장
+  if (!saveData(PRODUCTS_FILE, products)) {
+    return res.json({ success: false, message: '제품 재고 업데이트에 실패했습니다.' });
+  }
+  
+  purchases.splice(purchaseIndex, 1);
+  
+  // 데이터 저장
+  if (saveData(PURCHASES_FILE, purchases)) {
+    res.json({ success: true, message: '구매 이력이 삭제되었습니다.' });
   } else {
     res.json({ success: false, message: '데이터 저장에 실패했습니다.' });
   }

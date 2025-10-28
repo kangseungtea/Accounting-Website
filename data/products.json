@@ -1,1 +1,28 @@
-[]
+[
+  {
+    "id": 1759936792842,
+    "name": "Windows 11 Home [COEM(DSP)/한글/64bit]",
+    "category": "소프트웨어",
+    "brand": "마이크로소프트",
+    "price": 175000,
+    "stockQuantity": 1,
+    "status": "정품",
+    "description": "",
+    "imageUrl": "",
+    "productCode": "303131101",
+    "registrationDate": "2025-10-08T15:19:52.842Z"
+  },
+  {
+    "id": 1759938418254,
+    "name": "타무즈 DDR4 PC4-25600 [16GB] (3200)",
+    "category": "컴퓨터부품",
+    "brand": "타무즈",
+    "price": 51200,
+    "stockQuantity": 2,
+    "status": "정품",
+    "description": "",
+    "imageUrl": "",
+    "productCode": "102013200",
+    "registrationDate": "2025-10-08T15:46:58.254Z"
+  }
+]

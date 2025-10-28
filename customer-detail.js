@@ -1,11 +1,13 @@
 // 고객 상세 정보 관련 변수
 let currentCustomerId = null;
 let currentCustomer = null;
+let products = [];
 
 // 페이지 로드 시 초기화
-window.addEventListener('load', () => {
-    checkUserStatus();
+window.addEventListener('load', async () => {
+    await checkUserStatus();
     getCustomerIdFromURL();
+    await loadProducts();
     if (currentCustomerId) {
         loadCustomerDetail();
         loadVisits();
@@ -18,6 +20,176 @@ window.addEventListener('load', () => {
 function getCustomerIdFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
     currentCustomerId = urlParams.get('id');
+}
+
+// 제품 목록 로드
+async function loadProducts() {
+    try {
+        console.log('제품 데이터 로딩 시작...');
+        const response = await fetch('/api/products?limit=1000', {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            products = result.data;
+            console.log('제품 데이터 로드 완료:', products.length, '개');
+            // 자동완성은 별도 초기화가 필요하지 않음
+        } else {
+            console.error('제품 데이터 로드 실패:', result.message);
+        }
+    } catch (error) {
+        console.error('제품 로드 오류:', error);
+    }
+}
+
+// 제품 자동완성 필터링
+function filterProducts(input) {
+    console.log('제품 필터링 시작, 입력값:', input.value);
+    const query = input.value.toLowerCase();
+    const suggestions = input.parentElement.querySelector('.autocomplete-suggestions');
+    
+    if (!suggestions) {
+        console.error('자동완성 제안 영역을 찾을 수 없습니다.');
+        return;
+    }
+    
+    if (query.length < 1) {
+        suggestions.style.display = 'none';
+        return;
+    }
+    
+    console.log('제품 데이터:', products.length, '개');
+    const filteredProducts = products.filter(product => 
+        product.name.toLowerCase().includes(query) ||
+        (product.brand && product.brand.toLowerCase().includes(query))
+    );
+    
+    console.log('필터링된 제품:', filteredProducts.length, '개');
+    displaySuggestions(suggestions, filteredProducts, input);
+}
+
+// 제품 제안 표시
+function displaySuggestions(suggestions, filteredProducts, input) {
+    suggestions.innerHTML = '';
+    
+    if (filteredProducts.length === 0) {
+        suggestions.style.display = 'none';
+        return;
+    }
+    
+    suggestions.style.display = 'block';
+    
+    filteredProducts.slice(0, 10).forEach(product => {
+        const suggestion = document.createElement('div');
+        suggestion.className = 'autocomplete-suggestion';
+        suggestion.innerHTML = `
+            <div class="product-name">${product.name}</div>
+            <div class="product-info">
+                ${product.brand ? `브랜드: ${product.brand}` : ''}
+                <span class="product-price">${product.price.toLocaleString()}원</span>
+            </div>
+        `;
+        
+        suggestion.addEventListener('click', () => {
+            selectProduct(input, product);
+        });
+        
+        suggestions.appendChild(suggestion);
+    });
+}
+
+// 제품 선택
+function selectProduct(input, product) {
+    input.value = product.name;
+    input.dataset.productId = product.id;
+    input.dataset.productPrice = product.price;
+    
+    // 가격 자동 입력 (사용자가 수정 가능)
+    const priceInput = input.closest('.item-row').querySelector('input[name="itemUnitPrice"]');
+    priceInput.value = product.price;
+    priceInput.dataset.originalPrice = product.price; // 원래 가격 저장
+    
+    // 제안 숨기기
+    hideProductSuggestions(input);
+    
+    // 금액 계산 업데이트
+    updateAmountCalculation();
+}
+
+// 제품 제안 표시
+function showProductSuggestions(input) {
+    if (input.value.length >= 1) {
+        filterProducts(input);
+    }
+}
+
+// 제품 제안 숨기기
+function hideProductSuggestions(input) {
+    // 약간의 지연을 두어 클릭 이벤트가 처리되도록 함
+    setTimeout(() => {
+        const suggestions = input.parentElement.querySelector('.autocomplete-suggestions');
+        suggestions.style.display = 'none';
+    }, 200);
+}
+
+// 부가세 계산 업데이트
+function updateTaxCalculation() {
+    updateAmountCalculation();
+}
+
+// 가격 힌트 표시
+function showPriceHint(input) {
+    const originalPrice = input.dataset.originalPrice;
+    if (originalPrice) {
+        input.placeholder = `원래 가격: ${parseInt(originalPrice).toLocaleString()}원`;
+    }
+}
+
+// 가격 힌트 숨기기
+function hidePriceHint(input) {
+    input.placeholder = '단가';
+}
+
+// 금액 계산 업데이트
+function updateAmountCalculation() {
+    const itemRows = document.querySelectorAll('.item-row');
+    let subtotal = 0;
+    
+    // 소계 계산
+    itemRows.forEach(row => {
+        const quantity = parseInt(row.querySelector('input[name="itemQuantity"]').value) || 0;
+        const unitPrice = parseInt(row.querySelector('input[name="itemUnitPrice"]').value) || 0;
+        subtotal += quantity * unitPrice;
+    });
+    
+    // 부가세 옵션 확인
+    const taxOption = document.getElementById('taxOption').value;
+    const taxRow = document.getElementById('taxRow');
+    let tax = 0;
+    let total = subtotal;
+    
+    if (taxOption === 'included') {
+        // 부가세 포함: 소계에 부가세가 포함되어 있음
+        tax = Math.round(subtotal * 0.1 / 1.1);
+        total = subtotal;
+        taxRow.style.display = 'flex';
+    } else if (taxOption === 'excluded') {
+        // 부가세 미포함: 소계에 부가세를 추가
+        tax = Math.round(subtotal * 0.1);
+        total = subtotal + tax;
+        taxRow.style.display = 'flex';
+    } else {
+        // 부가세 없음
+        tax = 0;
+        total = subtotal;
+        taxRow.style.display = 'none';
+    }
+    
+    // 금액 표시 업데이트
+    document.getElementById('subtotalAmount').textContent = subtotal.toLocaleString() + '원';
+    document.getElementById('taxAmount').textContent = tax.toLocaleString() + '원';
+    document.getElementById('totalAmount').textContent = total.toLocaleString() + '원';
 }
 
 // 수리 이력 로드
@@ -273,14 +445,16 @@ function displayPurchases(purchases) {
     tbody.innerHTML = '';
     
     if (purchases.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #666;">구매 이력이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #666;">구매 이력이 없습니다.</td></tr>';
         return;
     }
     
     purchases.forEach(purchase => {
         const row = document.createElement('tr');
         const itemsText = purchase.items.map(item => `${item.name} (${item.quantity}개)`).join(', ');
+        const purchaseCode = purchase.purchaseCode || '-';
         row.innerHTML = `
+            <td><span class="purchase-code">${purchaseCode}</span></td>
             <td>${new Date(purchase.purchaseDate).toLocaleDateString('ko-KR')}</td>
             <td><span class="type-badge type-${purchase.type}">${purchase.type}</span></td>
             <td>${itemsText}</td>
@@ -334,16 +508,143 @@ function addPurchase() {
     document.getElementById('purchaseModalTitle').textContent = '구매 이력 추가';
     document.getElementById('purchaseForm').reset();
     document.getElementById('purchaseDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('purchaseCode').value = ''; // 구매코드 초기화
     // 상품 목록 초기화
     document.getElementById('itemsList').innerHTML = `
         <div class="item-row">
-            <input type="text" name="itemName" placeholder="상품명" required>
-            <input type="number" name="itemQuantity" placeholder="수량" min="1" value="1" required>
-            <input type="number" name="itemUnitPrice" placeholder="단가" min="0" required>
+            <div class="autocomplete-container">
+                <input type="text" name="itemName" placeholder="상품명" required autocomplete="off" onkeyup="searchProducts(this)" onfocus="showSuggestions(this)" onblur="hideSuggestions(this)">
+                <div class="autocomplete-suggestions" style="display: none;"></div>
+            </div>
+            <input type="number" name="itemQuantity" placeholder="수량" min="1" value="1" required onchange="updateAmountCalculation()">
+            <input type="number" name="itemUnitPrice" placeholder="단가" min="0" required onchange="updateAmountCalculation()" onfocus="showPriceHint(this)" onblur="hidePriceHint(this)">
             <button type="button" onclick="removeItem(this)" class="btn btn-danger">삭제</button>
         </div>
     `;
     document.getElementById('purchaseModal').style.display = 'flex';
+}
+
+// 구매코드 자동 생성
+async function generatePurchaseCode() {
+    const type = document.getElementById('purchaseType').value;
+    
+    if (!type) {
+        showMessage('구분을 먼저 선택해주세요.', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/purchases/generate-code', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({ type })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            document.getElementById('purchaseCode').value = result.purchaseCode;
+            showMessage('구매코드가 자동 생성되었습니다.', 'success');
+        } else {
+            showMessage('구매코드 생성에 실패했습니다: ' + result.message, 'error');
+        }
+    } catch (error) {
+        console.error('구매코드 생성 오류:', error);
+        showMessage('구매코드 생성 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 구분 변경 시 구매코드 초기화
+function updatePurchaseCodeGeneration() {
+    document.getElementById('purchaseCode').value = '';
+}
+
+// 구매 이력 수정
+async function editPurchase(purchaseId) {
+    try {
+        const response = await fetch(`/api/purchases/${purchaseId}`, {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            const purchase = result.data;
+            
+            // 모달 제목 변경
+            document.getElementById('purchaseModalTitle').textContent = '구매 이력 수정';
+            
+            // 폼 데이터 채우기
+            document.getElementById('purchaseCode').value = purchase.purchaseCode || '';
+            document.getElementById('purchaseDate').value = new Date(purchase.purchaseDate).toISOString().split('T')[0];
+            document.getElementById('purchaseType').value = purchase.type;
+            document.getElementById('paymentMethod').value = purchase.paymentMethod;
+            document.getElementById('purchaseNotes').value = purchase.notes || '';
+            
+            // 상품 목록 채우기
+            const itemsList = document.getElementById('itemsList');
+            itemsList.innerHTML = '';
+            
+            purchase.items.forEach((item, index) => {
+                const itemRow = document.createElement('div');
+                itemRow.className = 'item-row';
+                itemRow.innerHTML = `
+                    <div class="autocomplete-container">
+                        <input type="text" name="itemName" placeholder="제품명 입력..." required autocomplete="off" onkeyup="filterProducts(this)" onfocus="showProductSuggestions(this)" onblur="hideProductSuggestions(this)" value="${item.name}">
+                        <div class="autocomplete-suggestions" style="display: none;"></div>
+                    </div>
+                    <input type="number" name="itemQuantity" placeholder="수량" min="1" value="${item.quantity}" required onchange="updateAmountCalculation()">
+                    <input type="number" name="itemUnitPrice" placeholder="단가" min="0" value="${item.unitPrice}" required onchange="updateAmountCalculation()" onfocus="showPriceHint(this)" onblur="hidePriceHint(this)">
+                    <button type="button" onclick="removeItem(this)" class="btn btn-danger">삭제</button>
+                `;
+                itemsList.appendChild(itemRow);
+            });
+            
+            // 부가세 정보 설정
+            if (purchase.taxInfo) {
+                document.getElementById('taxOption').value = purchase.taxInfo.option;
+                updateTaxCalculation();
+            }
+            
+            // 수정 모드로 설정
+            document.getElementById('purchaseForm').dataset.editingId = purchaseId;
+            
+            // 모달 표시
+            document.getElementById('purchaseModal').style.display = 'flex';
+        } else {
+            showMessage('구매 이력을 불러오는데 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('구매 이력 수정 오류:', error);
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 구매 이력 삭제
+async function deletePurchase(purchaseId) {
+    if (!confirm('정말로 이 구매 이력을 삭제하시겠습니까?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/purchases/${purchaseId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('구매 이력이 삭제되었습니다.', 'success');
+            loadPurchases();
+        } else {
+            showMessage(result.message || '삭제에 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('구매 이력 삭제 오류:', error);
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
 }
 
 // 상품 추가
@@ -352,9 +653,12 @@ function addItem() {
     const itemRow = document.createElement('div');
     itemRow.className = 'item-row';
     itemRow.innerHTML = `
-        <input type="text" name="itemName" placeholder="상품명" required>
-        <input type="number" name="itemQuantity" placeholder="수량" min="1" value="1" required>
-        <input type="number" name="itemUnitPrice" placeholder="단가" min="0" required>
+        <div class="autocomplete-container">
+            <input type="text" name="itemName" placeholder="제품명 입력..." required autocomplete="off" onkeyup="filterProducts(this)" onfocus="showProductSuggestions(this)" onblur="hideProductSuggestions(this)">
+            <div class="autocomplete-suggestions" style="display: none;"></div>
+        </div>
+        <input type="number" name="itemQuantity" placeholder="수량" min="1" value="1" required onchange="updateAmountCalculation()">
+        <input type="number" name="itemUnitPrice" placeholder="단가" min="0" required onchange="updateAmountCalculation()" onfocus="showPriceHint(this)" onblur="hidePriceHint(this)">
         <button type="button" onclick="removeItem(this)" class="btn btn-danger">삭제</button>
     `;
     itemsList.appendChild(itemRow);
@@ -364,6 +668,7 @@ function addItem() {
 function removeItem(button) {
     if (document.querySelectorAll('.item-row').length > 1) {
         button.parentElement.remove();
+        updateAmountCalculation();
     } else {
         alert('최소 하나의 상품은 필요합니다.');
     }
@@ -421,15 +726,22 @@ document.getElementById('purchaseForm').addEventListener('submit', async (e) => 
     const purchaseData = Object.fromEntries(formData);
     purchaseData.customerId = currentCustomerId;
     
+    // 구매코드 추가
+    purchaseData.purchaseCode = document.getElementById('purchaseCode').value;
+    
     // 상품 목록 처리
     const itemRows = document.querySelectorAll('.item-row');
     const items = [];
     itemRows.forEach(row => {
-        const name = row.querySelector('input[name="itemName"]').value;
+        const input = row.querySelector('input[name="itemName"]');
+        const name = input.value;
+        const productId = input.dataset.productId;
         const quantity = parseInt(row.querySelector('input[name="itemQuantity"]').value);
         const unitPrice = parseInt(row.querySelector('input[name="itemUnitPrice"]').value);
+        
         if (name && quantity && unitPrice) {
             items.push({
+                productId: productId || null,
                 name,
                 quantity,
                 unitPrice,
@@ -440,9 +752,29 @@ document.getElementById('purchaseForm').addEventListener('submit', async (e) => 
     
     purchaseData.items = items;
     
+    // 부가세 정보 추가
+    const taxOption = document.getElementById('taxOption').value;
+    const subtotalAmount = document.getElementById('subtotalAmount').textContent.replace(/[^0-9]/g, '');
+    const taxAmount = document.getElementById('taxAmount').textContent.replace(/[^0-9]/g, '');
+    const totalAmount = document.getElementById('totalAmount').textContent.replace(/[^0-9]/g, '');
+    
+    purchaseData.taxInfo = {
+        option: taxOption,
+        subtotal: parseInt(subtotalAmount) || 0,
+        tax: parseInt(taxAmount) || 0,
+        total: parseInt(totalAmount) || 0
+    };
+    
     try {
-        const response = await fetch('/api/purchases', {
-            method: 'POST',
+        // 수정 모드 확인
+        const editingId = e.target.dataset.editingId;
+        const isEdit = editingId !== undefined;
+        
+        const url = isEdit ? `/api/purchases/${editingId}` : '/api/purchases';
+        const method = isEdit ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -456,6 +788,11 @@ document.getElementById('purchaseForm').addEventListener('submit', async (e) => 
             showMessage(result.message, 'success');
             closePurchaseModal();
             loadPurchases();
+            
+            // 수정 모드 초기화
+            if (isEdit) {
+                e.target.removeAttribute('data-editing-id');
+            }
         } else {
             showMessage(result.message || '오류가 발생했습니다.', 'error');
         }
