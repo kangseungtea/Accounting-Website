@@ -1643,7 +1643,7 @@ function updateRepairStatusTable() {
     
     tbody.innerHTML = pageData.map(repair => `
         <tr>
-            <td style="text-align: center; font-weight: 600; color: #007bff;">${repair.repair_code || '-'}</td>
+            <td style="text-align: center; font-weight: 600; color: #007bff;">${repair.customer_id || '-'}</td>
             <td style="text-align: center;">${formatRepairDate(repair.repair_date)}</td>
             <td style="text-align: center;">${repair.customer_name || '-'}</td>
             <td style="text-align: center; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${repair.device_model || '-'}">${(repair.device_model || '-').length > 10 ? (repair.device_model || '-').substring(0, 10) + '...' : (repair.device_model || '-')}</td>
@@ -1751,12 +1751,12 @@ function filterRepairStatusTable() {
     const searchFilteredData = allRepairStatusData.filter(repair => {
         const customerName = (repair.customer_name || '').toLowerCase();
         const deviceModel = (repair.device_model || '').toLowerCase();
-        const repairCode = (repair.repair_code || '').toLowerCase();
+        const customerId = String(repair.customer_id || '').toLowerCase();
         const problem = (repair.problem || '').toLowerCase();
         
         return customerName.includes(searchTerm) ||
                deviceModel.includes(searchTerm) ||
-               repairCode.includes(searchTerm) ||
+               customerId.includes(searchTerm) ||
                problem.includes(searchTerm);
     });
     
