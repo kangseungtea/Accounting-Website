@@ -187,17 +187,145 @@ function populatePrintData(printWindow, repairData) {
         }
         
         // 부품 및 비용 설정
+        // 부품 리스트 설정
         if (doc.getElementById('printPartsList')) {
             const partsElement = doc.getElementById('printPartsList');
             if (repairData.partsList && repairData.partsList !== '사용된 부품이 없습니다.') {
                 partsElement.innerHTML = repairData.partsList;
             } else {
-                partsElement.textContent = '사용된 부품이 없습니다.';
+                partsElement.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">사용된 부품이 없습니다.</div>';
             }
         }
+        
+        // 인건비 리스트 설정
+        if (doc.getElementById('printLaborList')) {
+            const laborElement = doc.getElementById('printLaborList');
+            if (repairData.laborList && repairData.laborList !== '인건비 내역이 없습니다.') {
+                laborElement.innerHTML = repairData.laborList;
+            } else {
+                laborElement.innerHTML = '<div style="text-align: center; color: #666; padding: 10px;">인건비 내역이 없습니다.</div>';
+            }
+        }
+        
+        // 비용 요약 설정
+        let partsTotal = repairData.partsTotal || 0;
+        let laborTotal = repairData.laborTotal || 0;
+        
+        // 부품 총액이 0이고 부품 리스트가 있으면 자동 계산
+        if (partsTotal === 0 && repairData.partsList && repairData.partsList !== '사용된 부품이 없습니다.') {
+            const partsMatches = repairData.partsList.match(/(\d+)원/g);
+            if (partsMatches) {
+                partsTotal = partsMatches.reduce((sum, match) => {
+                    const amount = parseInt(match.replace(/[^\d]/g, ''));
+                    return sum + (isNaN(amount) ? 0 : amount);
+                }, 0);
+            }
+            
+            // 부품 총액이 0이어도 부품 리스트에 실제 부품이 있는지 확인
+            // 부품명이 있는지 확인 (예: "H310 보드", "CPU" 등)
+            const hasParts = repairData.partsList.includes('<strong>') || 
+                           repairData.partsList.includes('보드') || 
+                           repairData.partsList.includes('CPU') ||
+                           repairData.partsList.includes('메모리') ||
+                           repairData.partsList.includes('하드') ||
+                           repairData.partsList.includes('그래픽') ||
+                           repairData.partsList.includes('파워') ||
+                           repairData.partsList.includes('케이스') ||
+                           repairData.partsList.includes('쿨러') ||
+                           repairData.partsList.includes('SSD') ||
+                           repairData.partsList.includes('HDD');
+            
+            // 부품이 실제로 없고 총액도 0이면 "사용된 부품이 없습니다" 표시
+            if (partsTotal === 0 && !hasParts) {
+                const partsElement = doc.getElementById('printPartsList');
+                if (partsElement) {
+                    partsElement.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">사용된 부품이 없습니다.</div>';
+                }
+            }
+        }
+        
+        // 인건비 총액이 0이고 인건비 리스트가 있으면 자동 계산
+        if (laborTotal === 0 && repairData.laborList && repairData.laborList !== '인건비 내역이 없습니다.') {
+            const laborMatches = repairData.laborList.match(/(\d+)원/g);
+            if (laborMatches) {
+                laborTotal = laborMatches.reduce((sum, match) => {
+                    const amount = parseInt(match.replace(/[^\d]/g, ''));
+                    return sum + (isNaN(amount) ? 0 : amount);
+                }, 0);
+            }
+        }
+        
+        // 기본 금액 (부품비 + 인건비)
+        const baseAmount = partsTotal + laborTotal;
+        
+        console.log('💰 비용 계산 디버깅:', {
+            partsTotal,
+            laborTotal,
+            baseAmount,
+            repairDataVatOption: repairData.vatOption,
+            repairDataVat_option: repairData.vat_option
+        });
+        
+        // 부가세 옵션 확인
+        const vatOption = repairData.vatOption || repairData.vat_option || 'included';
+        
+        let totalCost, supplyAmount, vatAmount, vatDescription;
+        
+        if (vatOption === 'included') {
+            // 부가세 포함: 기본 금액이 이미 부가세 포함된 금액
+            totalCost = baseAmount;
+            supplyAmount = Math.round(baseAmount / 1.1);
+            vatAmount = baseAmount - supplyAmount;
+            vatDescription = '부품비 + 인건비 (부가세 포함)';
+        } else if (vatOption === 'excluded') {
+            // 부가세 미포함: 기본 금액에 부가세 추가
+            supplyAmount = baseAmount;
+            vatAmount = Math.round(baseAmount * 0.1);
+            totalCost = supplyAmount + vatAmount;
+            vatDescription = '부품비 + 인건비 (부가세 미포함)';
+        } else {
+            // 부가세 없음: 기본 금액 그대로
+            totalCost = baseAmount;
+            supplyAmount = baseAmount;
+            vatAmount = 0;
+            vatDescription = '부품비 + 인건비 (부가세 없음)';
+        }
+        
+        console.log('💰 최종 계산 결과:', {
+            vatOption,
+            totalCost,
+            supplyAmount,
+            vatAmount,
+            vatDescription
+        });
+        
+        // 공급가액 표시
+        if (doc.getElementById('printSupplyAmount')) {
+            doc.getElementById('printSupplyAmount').textContent = `${supplyAmount.toLocaleString('ko-KR')}원`;
+        }
+        
+        // 부가세 표시 (부가세가 있는 경우만)
+        const vatSection = doc.getElementById('printVatSection');
+        if (vatSection) {
+            if (vatAmount > 0) {
+                vatSection.style.display = 'flex';
+                const vatAmountElement = doc.getElementById('printVatAmount');
+                if (vatAmountElement) {
+                    vatAmountElement.textContent = `${vatAmount.toLocaleString('ko-KR')}원`;
+                }
+            } else {
+                vatSection.style.display = 'none';
+            }
+        }
+        
+        // 총 비용 표시
         if (doc.getElementById('printTotalCost')) {
-            const totalCost = repairData.totalCost || 0;
-            doc.getElementById('printTotalCost').textContent = `총 비용: ${totalCost.toLocaleString()}원`;
+            doc.getElementById('printTotalCost').textContent = `${totalCost.toLocaleString('ko-KR')}원`;
+        }
+        
+        // 부가세 설명 표시
+        if (doc.getElementById('printVatDescription')) {
+            doc.getElementById('printVatDescription').textContent = vatDescription;
         }
         
         
@@ -207,7 +335,8 @@ function populatePrintData(printWindow, repairData) {
         const requiredElements = [
             'printRepairDate', 'printCustomerName', 'printCustomerPhone', 
             'printCustomerAddress', 'printManagementNumber', 'printDeviceModel',
-            'printProblem', 'printSolution', 'printTotalCost'
+            'printProblem', 'printSolution', 'printPartsList', 'printLaborList',
+            'printSupplyAmount', 'printTotalCost', 'printVatDescription'
         ];
         
         let missingElements = [];
@@ -256,8 +385,16 @@ function extractRepairDataFromModal(modal) {
         deviceModel: modal.querySelector('#detailDeviceModel')?.textContent || '-',
         problem: modal.querySelector('#detailProblem')?.textContent || '-',
         solution: modal.querySelector('#detailSolution')?.textContent || '-',
-        totalCost: modal.querySelector('#detailTotalCost')?.textContent || '0'
+        totalCost: modal.querySelector('#detailTotalCost')?.textContent || '0',
+        vatOption: 'included' // 기본값으로 부가세 포함 설정
     };
+    
+    // 부가세 옵션 추출 (실제 데이터베이스에서 가져온 값 사용)
+    // repair 객체에서 vat_option을 직접 가져와야 함
+    if (window.currentRepairData && window.currentRepairData.vat_option) {
+        data.vatOption = window.currentRepairData.vat_option;
+        console.log('🔍 부가세 옵션 추출:', data.vatOption);
+    }
     
     // 총 비용에서 숫자만 추출
     if (data.totalCost && data.totalCost !== '-') {
@@ -278,6 +415,88 @@ function extractRepairDataFromModal(modal) {
         }
     } else {
         data.partsList = '사용된 부품이 없습니다.';
+    }
+    
+    // 인건비 목록 처리
+    const laborList = modal.querySelector('#detailLabor');
+    if (laborList) {
+        const laborContent = laborList.innerHTML;
+        if (laborContent && laborContent.trim() !== '' && !laborContent.includes('인건비 내역이 없습니다')) {
+            data.laborList = laborContent;
+        } else {
+            data.laborList = '인건비 내역이 없습니다.';
+        }
+    } else {
+        data.laborList = '인건비 내역이 없습니다.';
+    }
+    
+    // 부품 총액 추출
+    const partsTotalElement = modal.querySelector('#detailPartsTotal');
+    if (partsTotalElement) {
+        const partsTotalText = partsTotalElement.textContent || '0';
+        const partsTotalMatch = partsTotalText.match(/[\d,]+/);
+        if (partsTotalMatch) {
+            data.partsTotal = parseInt(partsTotalMatch[0].replace(/,/g, ''));
+        } else {
+            data.partsTotal = 0;
+        }
+    } else {
+        data.partsTotal = 0;
+    }
+    
+    // 인건비 총액 추출
+    const laborTotalElement = modal.querySelector('#detailLaborTotal');
+    if (laborTotalElement) {
+        const laborTotalText = laborTotalElement.textContent || '0';
+        const laborTotalMatch = laborTotalText.match(/[\d,]+/);
+        if (laborTotalMatch) {
+            data.laborTotal = parseInt(laborTotalMatch[0].replace(/,/g, ''));
+        } else {
+            data.laborTotal = 0;
+        }
+    } else {
+        data.laborTotal = 0;
+    }
+    
+    // 부품과 인건비 총액이 0이면 HTML에서 자동 계산
+    console.log('🔍 부품 자동 계산 디버깅:', {
+        partsTotal: data.partsTotal,
+        partsList: data.partsList,
+        partsListLength: data.partsList ? data.partsList.length : 0
+    });
+    
+    if (data.partsTotal === 0 && data.partsList && data.partsList !== '사용된 부품이 없습니다.') {
+        // 총액만 추출 (단가 제외) - "= 60,000원" 패턴만 매치
+        const partsMatches = data.partsList.match(/= ([\d,]+)원/g);
+        console.log('🔍 부품 금액 매치:', partsMatches);
+        if (partsMatches) {
+            data.partsTotal = partsMatches.reduce((sum, match) => {
+                const amount = parseInt(match.replace(/[^\d]/g, ''));
+                console.log('🔍 부품 금액 추출:', { match, amount });
+                return sum + (isNaN(amount) ? 0 : amount);
+            }, 0);
+            console.log('🔍 부품 총액 계산 결과:', data.partsTotal);
+        }
+    }
+    
+    console.log('🔍 인건비 자동 계산 디버깅:', {
+        laborTotal: data.laborTotal,
+        laborList: data.laborList,
+        laborListLength: data.laborList ? data.laborList.length : 0
+    });
+    
+    if (data.laborTotal === 0 && data.laborList && data.laborList !== '인건비 내역이 없습니다.') {
+        // 인건비 금액만 추출 - "- 40,000원" 패턴만 매치
+        const laborMatches = data.laborList.match(/- ([\d,]+)원/g);
+        console.log('🔍 인건비 금액 매치:', laborMatches);
+        if (laborMatches) {
+            data.laborTotal = laborMatches.reduce((sum, match) => {
+                const amount = parseInt(match.replace(/[^\d]/g, ''));
+                console.log('🔍 인건비 금액 추출:', { match, amount });
+                return sum + (isNaN(amount) ? 0 : amount);
+            }, 0);
+            console.log('🔍 인건비 총액 계산 결과:', data.laborTotal);
+        }
     }
     
     console.log('📋 추출된 데이터:', data);

@@ -623,8 +623,8 @@ function formatPartsDisplay(parts) {
         // 부품별 총액 계산
         const totalPartsCost = parts.reduce((sum, part) => {
             const quantity = part.quantity || 0;
-            const unitPrice = part.unitPrice || 0;
-            const totalPrice = part.totalPrice || (quantity * unitPrice);
+            const unitPrice = part.unit_price || part.unitPrice || 0;
+            const totalPrice = part.total_price || part.totalPrice || (quantity * unitPrice);
             console.log(`부품 ${part.name} 계산: 수량=${quantity}, 단가=${unitPrice}, 총액=${totalPrice}`);
             return sum + totalPrice;
         }, 0);
@@ -633,10 +633,10 @@ function formatPartsDisplay(parts) {
         
         const partsHTML = parts.map(part => {
             console.log('부품 데이터 처리:', part);
-            // 안전한 숫자 처리
+            // 안전한 숫자 처리 (unit_price와 unitPrice 모두 지원)
             const quantity = part.quantity || 0;
-            const unitPrice = part.unitPrice || 0;
-            const totalPrice = part.totalPrice || (quantity * unitPrice);
+            const unitPrice = part.unit_price || part.unitPrice || 0;
+            const totalPrice = part.total_price || part.totalPrice || (quantity * unitPrice);
             
             console.log(`부품 ${part.name}: 수량=${quantity}, 단가=${unitPrice}, 총액=${totalPrice}`);
             
@@ -1136,6 +1136,10 @@ async function viewRepairDetail(repairId) {
 function showRepairDetailModal(repair) {
     console.log('📋 수리 상세 모달 표시 시작:', repair);
     
+    // 전역 변수로 repair 데이터 저장 (프린트에서 사용)
+    window.currentRepairData = repair;
+    console.log('🔍 전역 repair 데이터 저장:', window.currentRepairData);
+    
     // 모달 요소 확인
     const modal = document.getElementById('repairDetailModal');
     console.log('🔍 모달 요소:', modal);
@@ -1189,7 +1193,7 @@ function showRepairDetailModal(repair) {
         const partsHtml = repair.parts.map(part => {
             if (typeof part === 'object' && part !== null) {
                 return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">
-                    <strong>${part.name || '부품명 없음'}</strong> - ${part.quantity || 1}개 × ${(part.unit_price || 0).toLocaleString('ko-KR')}원 = ${(part.total_price || 0).toLocaleString('ko-KR')}원
+                    <strong>${part.name || '부품명 없음'}</strong> - ${part.quantity || 1}개 × ${(part.unit_price || part.unitPrice || 0).toLocaleString('ko-KR')}원 = ${(part.total_price || part.totalPrice || 0).toLocaleString('ko-KR')}원
                 </div>`;
             } else {
                 return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">${part}</div>`;

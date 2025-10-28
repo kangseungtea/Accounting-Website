@@ -59,6 +59,13 @@ body {
     margin-bottom: 15px;
 }
 
+.print-info-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;/*2열 그리드*/
+    gap: 15px;/*그리드 칼럼 간격*/
+    margin-bottom: 15px;
+}
+
 .print-info-item {
     display: flex;
     flex-direction: column;
@@ -123,6 +130,45 @@ body {
     border-radius: 4px;/*그리드 라벨 라운드*/
 }
 
+.print-warranty-info {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+}
+
+.warranty-section {
+    margin-bottom: 15px;
+}
+
+.warranty-section:last-child {
+    margin-bottom: 0;
+}
+
+.warranty-title {
+    font-size: 12px;
+    font-weight: bold;
+    color: #007bff;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 4px;
+}
+
+.warranty-content {
+    font-size: 10px;
+    line-height: 1.4;
+    color: #333;
+}
+
+.warranty-content div {
+    margin-bottom: 4px;
+    padding-left: 8px;
+}
+
+.warranty-content div:last-child {
+    margin-bottom: 0;
+}
+
 .print-footer {
     margin-top: 10px;
     text-align: center;
@@ -153,5 +199,19 @@ body {
     .print-info-grid-4 {
         grid-template-columns: 1fr 1fr 1fr 1fr;
         gap: 2px;
+    }
+    .print-info-grid-2 {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    .print-warranty-info {
+        padding: 8px;
+        font-size: 9px;
+    }
+    .warranty-title {
+        font-size: 10px;
+    }
+    .warranty-content {
+        font-size: 9px;
     }
 }
