@@ -1253,6 +1253,83 @@ body {
     display: block;
 }
 
+/* 구매 이력 구분 항목 스타일 */
+.purchase-type {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    display: inline-block;
+}
+
+.purchase-type-구매 {
+    background: #28a745; /* 녹색 */
+}
+
+.purchase-type-판매 {
+    background: #dc3545; /* 빨간색 */
+}
+
+.purchase-type-반품 {
+    background: #6c757d; /* 회색 */
+}
+
+/* 제품 상태별 배지 스타일 */
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-new {
+    background: #28a745;
+    color: white;
+}
+
+.status-used {
+    background: #ffc107;
+    color: #212529;
+}
+
+.status-bulk {
+    background: #17a2b8;
+    color: white;
+}
+
+.status-refurb {
+    background: #6f42c1;
+    color: white;
+}
+
+.status-defective {
+    background: #dc3545;
+    color: white;
+}
+
+.status-default {
+    background: #6c757d;
+    color: white;
+}
+
+/* 제품 그룹 스타일 */
+.product-group-header {
+    background: #f8f9fa !important;
+    font-weight: bold;
+    border-left: 4px solid #007bff;
+}
+
+.product-group-item {
+    background: #fafbfc;
+}
+
+.product-group-item td:first-child {
+    padding-left: 20px;
+}
+
 .section-header {
     display: flex;
     justify-content: space-between;

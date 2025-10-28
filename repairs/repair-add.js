@@ -5,9 +5,10 @@ if (typeof currentCustomerId === 'undefined') {
     console.error('currentCustomerId가 정의되지 않았습니다. customer-detail.js가 먼저 로드되어야 합니다.');
 }
 
-// 수리 이력 추가
-function addRepair() {
-    console.log('addRepair 함수 호출됨, currentCustomerId:', currentCustomerId);
+// 수리 이력 추가/수정
+function addRepair(editData = null) {
+    const isEditMode = editData !== null;
+    console.log('addRepair 함수 호출됨, isEditMode:', isEditMode, 'currentCustomerId:', currentCustomerId);
     
     // currentCustomerId 확인
     if (!currentCustomerId) {
@@ -23,30 +24,123 @@ function addRepair() {
     }
     
     // 모달 제목 설정
-    document.getElementById('repairModalTitle').textContent = '수리 이력 추가';
+    document.getElementById('repairModalTitle').textContent = isEditMode ? '수리 이력 수정' : '수리 이력 추가';
     
     // 폼 초기화
     document.getElementById('repairForm').reset();
-    document.getElementById('repairDate').value = new Date().toISOString().split('T')[0];
-    document.getElementById('deviceModel').value = '';
-    document.getElementById('problem').value = '';
-    document.getElementById('solution').value = '';
     
-    // 부품 목록 초기화
-    loadPartsData([]);
-    
-    // 인건비 목록 초기화
-    loadLaborData([]);
-    
-    document.getElementById('warranty').value = '';
-    document.getElementById('repairTechnician').value = '';
-    document.getElementById('repairStatus').value = '완료';
-    
-    // 부가세 옵션 초기화
-    const vatIncludedRadio = document.querySelector('input[name="vatOption"][value="included"]');
-    if (vatIncludedRadio) {
-        vatIncludedRadio.checked = true;
-    }
+    // 모달이 완전히 렌더링된 후 폼 요소에 접근하도록 setTimeout 사용
+    setTimeout(() => {
+        if (isEditMode) {
+            // 수정 모드: 기존 데이터로 폼 채우기
+            console.log('수정 모드: 기존 데이터 로드', editData);
+            
+            const repairDate = document.getElementById('repairDate');
+            const deviceModel = document.getElementById('deviceModel');
+            const problem = document.getElementById('problem');
+            const solution = document.getElementById('solution');
+            const warranty = document.getElementById('warranty');
+            const repairTechnician = document.getElementById('repairTechnician');
+            const repairStatus = document.getElementById('repairStatus');
+            const totalCost = document.getElementById('totalCost');
+            const notes = document.getElementById('notes');
+            
+            console.log('폼 요소 확인:', {
+                repairDate: !!repairDate,
+                deviceModel: !!deviceModel,
+                problem: !!problem,
+                solution: !!solution,
+                warranty: !!warranty,
+                repairTechnician: !!repairTechnician,
+                repairStatus: !!repairStatus,
+                totalCost: !!totalCost,
+                notes: !!notes
+            });
+            
+            if (repairDate) repairDate.value = editData.repair_date ? editData.repair_date.split(' ')[0] : '';
+            if (deviceModel) {
+                deviceModel.value = editData.device_model || '';
+                console.log('deviceModel 설정됨:', deviceModel.value);
+            }
+            if (problem) {
+                problem.value = editData.problem || '';
+                console.log('problem 설정됨:', problem.value);
+            }
+            if (solution) solution.value = editData.solution || '';
+            if (warranty) warranty.value = editData.warranty || '';
+            if (repairTechnician) repairTechnician.value = editData.technician || '';
+            if (repairStatus) repairStatus.value = editData.status || '완료';
+            if (totalCost) totalCost.value = editData.total_cost || 0;
+            if (notes) notes.value = editData.notes || '';
+            
+            // 부가세 옵션 설정
+            const vatOption = editData.vat_option || 'included';
+            const vatRadio = document.querySelector(`input[name="vatOption"][value="${vatOption}"]`);
+            if (vatRadio) {
+                vatRadio.checked = true;
+            }
+            
+            // 부품 목록 로드
+            loadPartsData(editData.parts || []);
+            
+            // 인건비 목록 로드
+            loadLaborData(editData.labor || []);
+            
+            // 수정 모드임을 표시하기 위한 hidden input 추가
+            let hiddenInput = document.getElementById('repairId');
+            if (!hiddenInput) {
+                hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.id = 'repairId';
+                hiddenInput.name = 'repairId';
+                const repairForm = document.getElementById('repairForm');
+                if (repairForm) {
+                    repairForm.appendChild(hiddenInput);
+                }
+            }
+            hiddenInput.value = editData.id;
+            
+        } else {
+            // 추가 모드: 기본값으로 초기화
+            const repairDate = document.getElementById('repairDate');
+            const deviceModel = document.getElementById('deviceModel');
+            const problem = document.getElementById('problem');
+            const solution = document.getElementById('solution');
+            const warranty = document.getElementById('warranty');
+            const repairTechnician = document.getElementById('repairTechnician');
+            const repairStatus = document.getElementById('repairStatus');
+            const totalCost = document.getElementById('totalCost');
+            const notes = document.getElementById('notes');
+            
+            if (repairDate) repairDate.value = new Date().toISOString().split('T')[0];
+            if (deviceModel) deviceModel.value = '';
+            if (problem) problem.value = '';
+            if (solution) solution.value = '';
+            if (warranty) warranty.value = '';
+            if (repairTechnician) repairTechnician.value = '';
+            if (repairStatus) repairStatus.value = '완료';
+            if (totalCost) totalCost.value = 0;
+            if (notes) notes.value = '';
+            
+            // 부품 목록 초기화
+            loadPartsData([]);
+            
+            // 인건비 목록 초기화
+            loadLaborData([]);
+            
+            // 부가세 옵션 초기화
+            const vatIncludedRadio = document.querySelector('input[name="vatOption"][value="included"]');
+            if (vatIncludedRadio) {
+                vatIncludedRadio.checked = true;
+            }
+            
+            // 수정 모드 hidden input 제거
+            const hiddenInput = document.getElementById('repairId');
+            if (hiddenInput) {
+                hiddenInput.remove();
+            }
+        }
+    }, 100);
     
     // 총 수리 비용 초기화 (loadPartsData와 loadLaborData에서 이미 호출됨)
     // 추가로 한 번 더 호출하여 확실히 업데이트
@@ -117,7 +211,7 @@ function addPart() {
 
 // 부품 삭제
 function removePart(button) {
-    const partRow = button.closest('.part-row');
+    const partRow = button.closest('.part-row, .part-item');
     if (partRow) {
         partRow.remove();
         
@@ -131,13 +225,14 @@ function removePart(button) {
 
 // 부품 계산 업데이트
 function updatePartsCalculation() {
-    const partRows = document.querySelectorAll('.part-row');
+    const partRows = document.querySelectorAll('.part-row, .part-item');
     let total = 0;
     
     partRows.forEach(row => {
-        const quantityInput = row.querySelector('input[name="partQuantity"]');
-        const unitPriceInput = row.querySelector('input[name="partUnitPrice"]');
-        const totalSpan = row.querySelector('.part-total');
+        // name 속성과 class 속성 모두 확인
+        const quantityInput = row.querySelector('input[name="partQuantity"], input.part-quantity');
+        const unitPriceInput = row.querySelector('input[name="partUnitPrice"], input.part-unit-price');
+        const totalSpan = row.querySelector('.part-total, .part-total-price');
         
         if (quantityInput && unitPriceInput && totalSpan) {
             const quantity = parseInt(quantityInput.value) || 0;
@@ -187,7 +282,7 @@ function addLabor() {
 
 // 인건비 삭제
 function removeLabor(button) {
-    const laborRow = button.closest('.labor-row');
+    const laborRow = button.closest('.labor-row, .labor-item');
     if (laborRow) {
         laborRow.remove();
         
@@ -201,12 +296,13 @@ function removeLabor(button) {
 
 // 인건비 계산 업데이트
 function updateLaborCalculation() {
-    const laborRows = document.querySelectorAll('.labor-row');
+    const laborRows = document.querySelectorAll('.labor-row, .labor-item');
     let total = 0;
     
     laborRows.forEach(row => {
-        const amountInput = row.querySelector('input[name="laborAmount"]');
-        const totalSpan = row.querySelector('.labor-total');
+        // name 속성과 class 속성 모두 확인
+        const amountInput = row.querySelector('input[name="laborAmount"], input.labor-cost');
+        const totalSpan = row.querySelector('.labor-total, .labor-total-cost');
         
         if (amountInput && totalSpan) {
             const amount = parseInt(amountInput.value) || 0;
@@ -372,14 +468,16 @@ function loadLaborData(laborData) {
 function updateTotalRepairCost() {
     console.log('=== updateTotalRepairCost 함수 호출됨 ===');
     
-    // 부품 총액 계산
-    const partRows = document.querySelectorAll('.part-row');
+    // 부품 총액 계산 - part-item과 part-row 모두 확인
+    const partRows = document.querySelectorAll('.part-row, .part-item');
     let partsTotal = 0;
     console.log('부품 행 개수:', partRows.length);
     
     partRows.forEach((row, index) => {
-        const quantityInput = row.querySelector('input[name="partQuantity"]');
-        const unitPriceInput = row.querySelector('input[name="partUnitPrice"]');
+        // name 속성과 class 속성 모두 확인
+        const quantityInput = row.querySelector('input[name="partQuantity"], input.part-quantity');
+        const unitPriceInput = row.querySelector('input[name="partUnitPrice"], input.part-unit-price');
+        
         if (quantityInput && unitPriceInput) {
             const quantity = parseInt(quantityInput.value) || 0;
             const unitPrice = parseInt(unitPriceInput.value) || 0;
@@ -388,16 +486,19 @@ function updateTotalRepairCost() {
             console.log(`부품 ${index + 1}: 수량=${quantity}, 단가=${unitPrice}, 총액=${total}`);
         } else {
             console.log(`부품 ${index + 1}: 입력 필드를 찾을 수 없음`);
+            console.log('quantityInput:', quantityInput, 'unitPriceInput:', unitPriceInput);
+            console.log('row HTML:', row.outerHTML.substring(0, 200) + '...');
         }
     });
     
-    // 인건비 총액 계산
-    const laborRows = document.querySelectorAll('.labor-row');
+    // 인건비 총액 계산 - labor-item과 labor-row 모두 확인
+    const laborRows = document.querySelectorAll('.labor-row, .labor-item');
     let laborTotal = 0;
     console.log('인건비 행 개수:', laborRows.length);
     
     laborRows.forEach((row, index) => {
-        const amountInput = row.querySelector('input[name="laborAmount"]');
+        // name 속성과 class 속성 모두 확인
+        const amountInput = row.querySelector('input[name="laborAmount"], input.labor-cost');
         if (amountInput) {
             const amount = parseInt(amountInput.value) || 0;
             laborTotal += amount;
@@ -541,8 +642,9 @@ function displayPartsSuggestions(suggestions, products, input) {
         const div = document.createElement('div');
         div.className = 'suggestion-item';
         div.innerHTML = `
-            <div style="font-weight: bold;">${product.name}</div>
+            <div style="font-weight: bold; color: #000;">${product.name}</div>
             <div style="font-size: 12px; color: #666;">${product.price.toLocaleString('ko-KR')}원</div>
+            <div style="font-size: 12px; color: #666;">${product.status}</div>
         `;
         div.addEventListener('click', () => selectPart(input, product));
         suggestions.appendChild(div);
@@ -680,16 +782,51 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             
             // 폼 데이터 수집
+            const deviceModelElement = document.getElementById('deviceModel');
+            const problemElement = document.getElementById('problem');
+            
+            if (!deviceModelElement || !problemElement) {
+                console.error('필수 폼 요소를 찾을 수 없습니다:', {
+                    deviceModel: !!deviceModelElement,
+                    problem: !!problemElement
+                });
+                showMessage('폼 요소를 찾을 수 없습니다. 페이지를 새로고침해주세요.', 'error');
+                return;
+            }
+            
+            const deviceModel = deviceModelElement.value;
+            const problem = problemElement.value;
+            
+            console.log('폼 데이터 확인:', {
+                deviceModel: deviceModel,
+                problem: problem,
+                deviceModelLength: deviceModel ? deviceModel.length : 0,
+                problemLength: problem ? problem.length : 0
+            });
+            
+            // 필수 필드 검증
+            if (!deviceModel || !problem) {
+                showMessage('모델명과 문제는 필수입니다.', 'error');
+                return;
+            }
+            
             const repairData = {
                 customerId: currentCustomerId,
                 repairDate: document.getElementById('repairDate').value,
-                deviceModel: document.getElementById('deviceModel').value,
-                problem: document.getElementById('problem').value,
+                repair_date: document.getElementById('repairDate').value,  // 서버가 기대하는 필드명
+                deviceModel: deviceModel,
+                device_model: deviceModel,  // 서버가 기대하는 필드명
+                problem: problem,
                 solution: document.getElementById('solution').value,
                 warranty: document.getElementById('warranty').value,
                 technician: document.getElementById('repairTechnician').value,
-                status: document.getElementById('repairStatus').value
+                status: document.getElementById('repairStatus').value,
+                notes: document.getElementById('notes') ? document.getElementById('notes').value : '',
+                totalCost: document.getElementById('totalCost') ? parseInt(document.getElementById('totalCost').value) || 0 : 0,
+                total_cost: document.getElementById('totalCost') ? parseInt(document.getElementById('totalCost').value) || 0 : 0  // 서버가 기대하는 필드명
             };
+            
+            console.log('수집된 폼 데이터:', repairData);
             
             // 부품 데이터 수집
             const parts = [];
@@ -790,7 +927,8 @@ document.addEventListener('DOMContentLoaded', function() {
             repairData.totalCost = totalCost;
             repairData.warranty = repairData.warranty || '';
             
-            const repairId = e.target.getAttribute('data-repair-id');
+            const repairIdInput = document.getElementById('repairId');
+            const repairId = repairIdInput ? repairIdInput.value : null;
             const isEdit = !!repairId;
             
             console.log('수리 이력 저장 데이터:', repairData); // 디버깅용

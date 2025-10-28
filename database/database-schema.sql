@@ -51,7 +51,7 @@ CREATE TABLE purchases (
     customer_id INTEGER NOT NULL,
     purchase_code TEXT UNIQUE,
     purchase_date DATETIME NOT NULL,
-    type TEXT NOT NULL CHECK (type IN ('판매', '구매')),
+    type TEXT NOT NULL CHECK (type IN ('판매', '구매', '반품')),
     total_amount INTEGER NOT NULL,
     payment_method TEXT,
     tax_option TEXT DEFAULT 'included' CHECK (tax_option IN ('included', 'excluded', 'none')),

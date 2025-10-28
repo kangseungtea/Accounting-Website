@@ -132,7 +132,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="productPrice">가격 *</label>
-                        <input type="number" id="productPrice" name="price" min="0" step="100" required>
+                        <input type="number" id="productPrice" name="price" min="0" required>
                     </div>
                     <div class="form-group">
                         <label for="productStock">재고수량 *</label>
@@ -144,8 +144,10 @@
                     <div class="form-group">
                         <label for="productStatus">상태</label>
                         <select id="productStatus" name="status">
-                            <option value="활성">활성</option>
-                            <option value="비활성">비활성</option>
+                            <option value="정품">정품</option>
+                            <option value="벌크">벌크</option>
+                            <option value="중고">중고</option>
+                            <option value="직구">직구</option>
                         </select>
                     </div>
                 </div>
@@ -289,6 +291,22 @@
         
         #productDetailContent::-webkit-scrollbar-thumb:hover {
             background: #adb5bd;
+        }
+        
+        /* 재고 상태별 색상 스타일 */
+        .stock-negative {
+            color: #ff6b6b !important;
+            font-weight: bold;
+        }
+        
+        .stock-empty {
+            color: #dc3545 !important;
+            font-weight: bold;
+        }
+        
+        .stock-available {
+            color: #28a745 !important;
+            font-weight: bold;
         }
     </style>
 

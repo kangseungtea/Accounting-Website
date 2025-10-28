@@ -90,7 +90,7 @@ function displayCustomers(customers) {
     
     if (customers.length === 0) {
         console.log('고객 데이터가 없음, 빈 메시지 표시');
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #666;">등록된 고객이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 40px; color: #666;">등록된 고객이 없습니다.</td></tr>';
         return;
     }
     
@@ -107,12 +107,20 @@ function displayCustomers(customers) {
         };
         
         row.innerHTML = `
+            <td>${customer.id || '-'}</td>
             <td>${customer.name || '-'}</td>
             <td>${customer.company || '-'}</td>
             <td>${customer.phone || '-'}</td>
-            <td>${customer.address || '-'}</td>
-            <td>${customer.management_number || customer.managementNumber || '-'}</td>
+            <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${customer.address || '-'}">${customer.address || '-'}</td>
+            <td>
+                <input type="text" 
+                       value="${customer.management_number || customer.managementNumber || ''}" 
+                       style="width: 100px; padding: 4px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;"
+                       onblur="updateManagementNumber(${customer.id}, this.value)"
+                       placeholder="관리번호">
+            </td>
             <td>${formatNumber(customer.total_spent || customer.totalSpent)}원</td>
+            <td>${formatNumber(customer.total_return_amount || customer.totalReturnAmount || 0)}원</td>
             <td>${formatNumber(customer.total_repair_cost || customer.totalRepairCost)}원</td>
             <td><span class="status-badge status-${customer.status === '활성' ? 'active' : 'inactive'}">${customer.status || '활성'}</span></td>
             <td>
@@ -125,6 +133,33 @@ function displayCustomers(customers) {
         `;
         tbody.appendChild(row);
     });
+}
+
+// 관리번호 업데이트
+async function updateManagementNumber(customerId, managementNumber) {
+    try {
+        const response = await fetch(`/api/customers/${customerId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                management_number: managementNumber
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('관리번호가 업데이트되었습니다.', 'success');
+        } else {
+            showMessage('관리번호 업데이트에 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('관리번호 업데이트 오류:', error);
+        showMessage('관리번호 업데이트 중 오류가 발생했습니다.', 'error');
+    }
 }
 
 // 페이지네이션 표시

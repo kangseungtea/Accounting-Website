@@ -9,11 +9,37 @@ let editingProductId = null;
 window.addEventListener('load', async () => {
     await checkUserStatus();
     await loadCategoryData();
+    
+    // 제품 페이지 로딩 시 자동으로 모든 재고 동기화
+    await syncAllStockSilently();
+    
     loadProducts();
     
 });
 
-
+// 모든 제품 재고 조용히 동기화 (알림 없이)
+async function syncAllStockSilently() {
+    try {
+        console.log('🔄 모든 제품 재고 동기화 시작...');
+        const response = await fetch('/api/debug/sync-all-stock', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            console.log(`✅ 재고 동기화 완료: ${result.syncedCount}/${result.totalCount}개 제품`);
+            if (result.errorCount > 0) {
+                console.warn(`⚠️ ${result.errorCount}개 제품에서 오류 발생`);
+            }
+        } else {
+            console.error('재고 동기화 실패:', result.message);
+        }
+    } catch (error) {
+        console.error('재고 동기화 오류:', error);
+    }
+}
 
 // 사용자 상태 확인
 async function checkUserStatus() {
@@ -82,7 +108,7 @@ async function loadProducts(page = 1) {
     }
 }
 
-// 제품 목록 표시
+// 제품 목록 표시 (상태별 그룹화)
 function displayProducts(products) {
     console.log('displayProducts 호출됨, 제품 수:', products.length);
     const tbody = document.getElementById('productsTableBody');
@@ -101,40 +127,103 @@ function displayProducts(products) {
         return;
     }
     
+    // 제품명별로 그룹화
+    const groupedProducts = {};
     products.forEach(product => {
-        console.log('제품 데이터:', product);
-        const row = document.createElement('tr');
-        
-        // 안전한 숫자 변환 함수
-        const formatNumber = (value) => {
-            if (value === null || value === undefined || isNaN(value)) {
-                return '0';
-            }
-            return Number(value).toLocaleString('ko-KR');
-        };
-        
-        // 안전한 재고 수량 처리
-        const stockQuantity = product.stock_quantity || product.stockQuantity || 0;
-        const stockClass = stockQuantity === 0 ? 'stock-empty' : 'stock-available';
-        
-        row.innerHTML = `
-            <td><span class="product-code">${product.product_code || product.productCode || '-'}</span></td>
-            <td>${product.name || '-'}</td>
-            <td>${product.main_category || product.category || '-'}</td>
-            <td>${product.brand || '-'}</td>
-            <td>${formatNumber(product.price)}원</td>
-            <td class="${stockClass}">${stockQuantity}개</td>
-            <td><span class="status-badge status-${product.status === '활성' ? 'active' : 'inactive'}">${product.status || '활성'}</span></td>
-            <td>
-                <div class="action-buttons">
-                    <button class="action-btn view-btn" onclick="viewProductDetail(${product.id})">상세</button>
-                    <button class="action-btn edit-btn" onclick="editProduct(${product.id})">수정</button>
-                    <button class="action-btn delete-btn" onclick="deleteProduct(${product.id})">삭제</button>
-                </div>
-            </td>
-        `;
-        tbody.appendChild(row);
+        const productName = product.name || '제품명 없음';
+        if (!groupedProducts[productName]) {
+            groupedProducts[productName] = [];
+        }
+        groupedProducts[productName].push(product);
     });
+    
+    // 그룹화된 제품들을 표시
+    Object.keys(groupedProducts).forEach(productName => {
+        const productGroup = groupedProducts[productName];
+        
+        // 제품명 그룹 헤더 (여러 상태가 있는 경우만)
+        if (productGroup.length > 1) {
+            const headerRow = document.createElement('tr');
+            headerRow.className = 'product-group-header';
+            headerRow.innerHTML = `
+                <td colspan="8" style="background: #f8f9fa; font-weight: bold; color: #495057; padding: 12px; border-left: 4px solid #007bff;">
+                    📦 ${productName} (${productGroup.length}개 상태)
+                </td>
+            `;
+            tbody.appendChild(headerRow);
+        }
+        
+        // 각 상태별 제품 표시
+        productGroup.forEach(product => {
+            console.log('제품 데이터:', product);
+            const row = document.createElement('tr');
+            
+            // 그룹 내에서 들여쓰기 (여러 상태가 있는 경우)
+            const indentClass = productGroup.length > 1 ? 'product-group-item' : '';
+            
+            // 안전한 숫자 변환 함수
+            const formatNumber = (value) => {
+                if (value === null || value === undefined || isNaN(value)) {
+                    return '0';
+                }
+                return Number(value).toLocaleString('ko-KR');
+            };
+            
+            // 안전한 재고 수량 처리
+            const stockQuantity = product.stock_quantity || product.stockQuantity || 0;
+            let stockClass, stockColor;
+            if (stockQuantity < 0) {
+                stockClass = 'stock-negative';
+                stockColor = '#ff6b6b'; // 빨간색 (음수)
+            } else if (stockQuantity === 0) {
+                stockClass = 'stock-empty';
+                stockColor = '#dc3545'; // 빨간색 (0개)
+            } else {
+                stockClass = 'stock-available';
+                stockColor = '#28a745'; // 초록색 (양수)
+            }
+            
+            // 상태별 색상 클래스
+            const statusClass = getStatusClass(product.status);
+            
+            row.className = indentClass;
+            row.innerHTML = `
+                <td><span class="product-code">${product.product_code || product.productCode || '-'}</span></td>
+                <td>${productGroup.length > 1 ? '└ ' : ''}${product.name || '-'}</td>
+                <td>${product.main_category || product.category || '-'}</td>
+                <td>${product.brand || '-'}</td>
+                <td>${formatNumber(product.price)}원</td>
+                <td class="${stockClass}" style="color: ${stockColor}; font-weight: bold;">${stockQuantity}개</td>
+                <td><span class="status-badge ${statusClass}">${product.status || '정품'}</span></td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="action-btn view-btn" onclick="viewProductDetail(${product.id})">상세</button>
+                        <button class="action-btn edit-btn" onclick="editProduct(${product.id})">수정</button>
+                        <button class="action-btn delete-btn" onclick="deleteProduct(${product.id})">삭제</button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    });
+}
+
+// 상태별 색상 클래스 반환
+function getStatusClass(status) {
+    switch(status) {
+        case '정품':
+            return 'status-new';
+        case '중고':
+            return 'status-used';
+        case '벌크':
+            return 'status-bulk';
+        case '리퍼':
+            return 'status-refurb';
+        case '불량품':
+            return 'status-defective';
+        default:
+            return 'status-default';
+    }
 }
 
 // 페이지네이션 표시
@@ -348,7 +437,7 @@ async function editProduct(productId) {
             document.getElementById('productBrand').value = product.brand || '';
             document.getElementById('productPrice').value = product.price;
             document.getElementById('productStock').value = product.stock_quantity || product.stockQuantity || 0;
-            document.getElementById('productStatus').value = product.status;
+            document.getElementById('productStatus').value = product.status || '정품';
             document.getElementById('productDescription').value = product.description || '';
             
             // 이미지 미리보기 (이미지 URL이 있는 경우)
@@ -602,6 +691,9 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
     if (!productData.detailCategory) {
         productData.detailCategory = '';
     }
+    if (!productData.status) {
+        productData.status = '정품';
+    }
     
     const isEdit = editingProductId !== null;
     
@@ -762,6 +854,16 @@ async function viewProductDetail(productId) {
             const product = result.data;
             const stockQuantity = product.stock_quantity || product.stockQuantity || 0;
             
+            // 재고 수량에 따른 색상 결정
+            let stockColor;
+            if (stockQuantity < 0) {
+                stockColor = '#ff6b6b'; // 빨간색 (음수)
+            } else if (stockQuantity === 0) {
+                stockColor = '#dc3545'; // 빨간색 (0개)
+            } else {
+                stockColor = '#28a745'; // 초록색 (양수)
+            }
+            
             // 제품 상세 정보 HTML 생성
             const productDetailContent = document.getElementById('productDetailContent');
             if (!productDetailContent) {
@@ -830,12 +932,12 @@ async function viewProductDetail(productId) {
                          <!-- 두 번째 행: 재고수량, 상태, 등록일, 빈 공간 -->
                          <div style="display: flex; flex-direction: column; gap: 8px;">
                              <strong style="color: #495057; font-weight: 600;">재고수량:</strong>
-                             <span class="${stockQuantity === 0 ? 'stock-empty' : 'stock-available'}" style="font-size: 18px; font-weight: bold; color: ${stockQuantity === 0 ? '#dc3545' : '#28a745'};">${stockQuantity}개</span>
+                             <span class="${stockQuantity < 0 ? 'stock-negative' : stockQuantity === 0 ? 'stock-empty' : 'stock-available'}" style="font-size: 18px; font-weight: bold; color: ${stockColor};">${stockQuantity}개</span>
                          </div>
                          
                          <div style="display: flex; flex-direction: column; gap: 8px;">
                              <strong style="color: #495057; font-weight: 600;">상태:</strong>
-                             <span><span class="status-badge status-${product.status === '활성' ? 'active' : 'inactive'}" style="background: ${product.status === '활성' ? '#28a745' : '#6c757d'}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">${product.status || '활성'}</span></span>
+                             <span><span class="status-badge status-${product.status === '정품' ? 'active' : 'inactive'}" style="background: ${product.status === '정품' ? '#28a745' : '#6c757d'}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">${product.status || '정품'}</span></span>
                          </div>
                          
                          <div style="display: flex; flex-direction: column; gap: 8px;">

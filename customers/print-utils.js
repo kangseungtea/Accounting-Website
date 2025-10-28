@@ -418,14 +418,16 @@ function extractRepairDataFromModal(modal) {
     // 부품 목록 처리 - 실제 데이터베이스에서 가져온 데이터 사용
     if (window.currentRepairData && window.currentRepairData.parts && Array.isArray(window.currentRepairData.parts)) {
         const parts = window.currentRepairData.parts;
+        console.log('부품 데이터 구조:', parts);
         if (parts.length > 0) {
             const partsHtml = parts.map(part => {
+                console.log('개별 부품 데이터:', part);
                 const quantity = part.quantity || 1;
                 const unitPrice = part.unit_price || part.unitPrice || 0;
                 const totalPrice = part.total_price || part.totalPrice || (quantity * unitPrice);
                 
                 return `<div style="padding: 8px 0; border-bottom: 1px solid #eee;">
-                    <strong>${part.name || '부품명 없음'}</strong> - ${quantity}개 × ${unitPrice.toLocaleString('ko-KR')}원 = ${totalPrice.toLocaleString('ko-KR')}원
+                    <strong>${part.name || part.product_name || part.part_name || '부품명 없음'}</strong> - ${quantity}개 × ${unitPrice.toLocaleString('ko-KR')}원 = ${totalPrice.toLocaleString('ko-KR')}원
                 </div>`;
             }).join('');
             data.partsList = partsHtml;

@@ -59,7 +59,7 @@ async function loadCustomerData() {
         
         
         // 구매 이력 로드
-        const purchasesResponse = await fetch(`/api/purchases?customerId=${currentCustomerId}`, {
+        const purchasesResponse = await fetch(`/api/purchases?customerId=${currentCustomerId}&limit=1000`, {
             credentials: 'include'
         });
         
@@ -115,7 +115,7 @@ function displayCustomerInfo(customer) {
     document.getElementById('customerPhone').textContent = customer.phone || '전화번호 없음';
     document.getElementById('customerEmail').textContent = customer.email || '이메일 없음';
     document.getElementById('customerAddress').textContent = customer.address || '주소 없음';
-    document.getElementById('customerManagementNumber').textContent = customer.management_number || customer.managementNumber || '관리번호 없음';
+    document.getElementById('customerManagementNumber').textContent = customer.id || '고객 번호 없음';
     document.getElementById('customerNotes').textContent = customer.notes || '비고 없음';
     
     // 고객 상태

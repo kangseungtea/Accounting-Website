@@ -1,5 +1,10 @@
 // 구매 이력 관련 기능
 
+// 페이지네이션 관련 전역 변수
+let allPurchases = [];
+let currentPurchasePage = 1;
+const purchasesPerPage = 10;
+
 // 구매 이력 추가 모달 표시
 function showAddPurchaseModal() {
     console.log('구매 이력 추가 모달 표시');
@@ -167,7 +172,11 @@ function filterProducts(input) {
     
     if (filteredProducts.length > 0) {
         suggestions.innerHTML = filteredProducts.map(product => 
-            `<div class="suggestion-item" onclick="selectProduct(this, '${product.id}', '${product.name}')">${product.name}</div>`
+            `<div class="suggestion-item" onclick="selectProduct(this, '${product.id}', '${product.name}')">
+                <div style="font-weight: bold; color: #000;">${product.name}</div>
+                <div style="font-size: 12px; color: #666;">${product.price.toLocaleString('ko-KR')}원</div>
+                <div style="font-size: 12px; color: #666;">${product.status}</div>
+            </div>`
         ).join('');
         suggestions.style.display = 'block';
     } else {
@@ -186,11 +195,15 @@ function selectProduct(element, productId, productName) {
     
     container.querySelector('.autocomplete-suggestions').style.display = 'none';
     
-    // 가격 힌트 표시
+    // 가격 자동 입력 및 힌트 표시
     const product = window.products.find(p => p.id == productId);
     if (product) {
         const priceInput = container.parentElement.querySelector('input[name="itemUnitPrice"]');
+        priceInput.value = product.price; // 가격 자동 입력
         priceInput.placeholder = `권장가격: ${product.price.toLocaleString('ko-KR')}원`;
+        
+        // 금액 계산 업데이트
+        updateAmountCalculation();
     }
 }
 
@@ -318,6 +331,8 @@ async function addPurchase(event) {
             showMessage('구매 이력이 성공적으로 추가되었습니다.', 'success');
             closePurchaseModal();
             loadCustomerData(); // 고객 데이터 다시 로드
+            // 페이지네이션을 첫 페이지로 리셋
+            currentPurchasePage = 1;
         } else {
             showMessage('구매 이력 추가에 실패했습니다: ' + result.message, 'error');
         }
@@ -330,6 +345,17 @@ async function addPurchase(event) {
 // 구매 이력 표시
 function displayPurchases(purchases) {
     console.log('구매 이력 표시 시작, 구매 건수:', purchases.length);
+    
+    // 전체 구매 데이터 저장
+    allPurchases = purchases;
+    currentPurchasePage = 1;
+    
+    // 페이지네이션으로 구매 이력 표시
+    displayPurchasesPage();
+}
+
+// 페이지네이션으로 구매 이력 표시
+function displayPurchasesPage() {
     const tbody = document.getElementById('purchasesTableBody');
     
     if (!tbody) {
@@ -339,13 +365,21 @@ function displayPurchases(purchases) {
     
     tbody.innerHTML = '';
     
-    if (purchases.length === 0) {
+    if (allPurchases.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #666;">구매 이력이 없습니다.</td></tr>';
+        updatePurchasePagination();
         return;
     }
     
+    // 현재 페이지의 데이터 계산
+    const startIndex = (currentPurchasePage - 1) * purchasesPerPage;
+    const endIndex = startIndex + purchasesPerPage;
+    const currentPagePurchases = allPurchases.slice(startIndex, endIndex);
+    
+    console.log(`페이지 ${currentPurchasePage} 표시: ${startIndex + 1}-${Math.min(endIndex, allPurchases.length)} / 총 ${allPurchases.length}개`);
+    
     // 각 구매의 상품별로 개별 행 생성
-    purchases.forEach(purchase => {
+    currentPagePurchases.forEach(purchase => {
         // 구매 상품들을 개별적으로 표시
         if (purchase.items && purchase.items.length > 0) {
             purchase.items.forEach((item, itemIndex) => {
@@ -372,8 +406,8 @@ function displayPurchases(purchases) {
                     <td style="padding: 12px 8px; border: 1px solid #dee2e6; font-weight: 600;">${purchase.purchase_code || '-'}</td>
                     <td style="padding: 12px 8px; border: 1px solid #dee2e6;">${purchase.purchase_date ? new Date(purchase.purchase_date).toLocaleDateString('ko-KR') : '-'}</td>
                     <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center;">
-                        <span style="background: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
-                            🛒 ${purchase.type}
+                        <span class="purchase-type purchase-type-${purchase.type}">
+                            ${purchase.type === '구매' ? '🛒' : purchase.type === '반품' ? '↩️' : '💰'} ${purchase.type}
                         </span>
                     </td>
                     <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: left; font-size: 12px; max-width: 200px;">
@@ -385,8 +419,8 @@ function displayPurchases(purchases) {
                     <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center;">${purchase.payment_method || '-'}</td>
                     <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center; font-weight: bold;">${item.quantity || 1}개</td>
                     <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center;">
-                        <button onclick="viewProductPurchaseHistory('${(item.product_name || item.name || '상품명 없음').replace(/'/g, "\\'")}')" style="background: #28a745; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 3px;">상품이력</button>
                         <button onclick="editProductPurchase(${purchase.id}, '${(item.product_name || item.name || '상품명 없음').replace(/'/g, "\\'")}', ${item.quantity || 1}, ${item.unit_price || 0}, ${item.total_price || 0})" style="background: #ffc107; color: black; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 3px;">수정</button>
+                        <button onclick="returnProduct(${purchase.id}, '${(item.product_name || item.name || '상품명 없음').replace(/'/g, "\\'")}', ${item.quantity || 1}, ${item.unit_price || 0}, ${item.total_price || 0})" style="background: #6c757d; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 3px;">반품</button>
                         <button onclick="deletePurchase(${purchase.id})" style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">삭제</button>
                     </td>
                 `;
@@ -417,8 +451,8 @@ function displayPurchases(purchases) {
             <td style="padding: 12px 8px; border: 1px solid #dee2e6; font-weight: 600;">${purchase.purchase_code || '-'}</td>
             <td style="padding: 12px 8px; border: 1px solid #dee2e6;">${purchase.purchase_date ? new Date(purchase.purchase_date).toLocaleDateString('ko-KR') : '-'}</td>
             <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: center;">
-                <span style="background: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
-                    🛒 ${purchase.type}
+                <span class="purchase-type purchase-type-${purchase.type}">
+                    ${purchase.type === '구매' ? '🛒' : purchase.type === '반품' ? '↩️' : '💰'} ${purchase.type}
                 </span>
             </td>
                 <td style="padding: 12px 8px; border: 1px solid #dee2e6; text-align: left; font-size: 12px; max-width: 200px;">
@@ -437,7 +471,83 @@ function displayPurchases(purchases) {
         tbody.appendChild(row);
         }
     });
+    
+    // 페이지네이션 UI 업데이트
+    updatePurchasePagination();
 }
+
+// 구매 이력 페이지네이션 UI 업데이트
+function updatePurchasePagination() {
+    const paginationContainer = document.getElementById('purchasePagination');
+    if (!paginationContainer) {
+        console.error('purchasePagination 요소를 찾을 수 없습니다!');
+        return;
+    }
+    
+    if (allPurchases.length === 0) {
+        paginationContainer.innerHTML = '';
+        return;
+    }
+    
+    const totalPages = Math.ceil(allPurchases.length / purchasesPerPage);
+    const startIndex = (currentPurchasePage - 1) * purchasesPerPage + 1;
+    const endIndex = Math.min(currentPurchasePage * purchasesPerPage, allPurchases.length);
+    
+    let paginationHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+            <div style="color: #666; font-size: 14px;">
+                ${startIndex}-${endIndex} / 총 ${allPurchases.length}개
+            </div>
+            <div style="display: flex; gap: 5px; align-items: center;">
+    `;
+    
+    // 이전 버튼
+    if (currentPurchasePage > 1) {
+        paginationHTML += `<button onclick="changePurchasePage(${currentPurchasePage - 1})" style="padding: 8px 12px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">이전</button>`;
+    } else {
+        paginationHTML += `<button disabled style="padding: 8px 12px; border: 1px solid #ddd; background: #f5f5f5; border-radius: 4px; cursor: not-allowed; color: #999;">이전</button>`;
+    }
+    
+    // 페이지 번호들
+    const startPage = Math.max(1, currentPurchasePage - 2);
+    const endPage = Math.min(totalPages, currentPurchasePage + 2);
+    
+    for (let i = startPage; i <= endPage; i++) {
+        if (i === currentPurchasePage) {
+            paginationHTML += `<button style="padding: 8px 12px; border: 1px solid #007bff; background: #007bff; color: white; border-radius: 4px; cursor: pointer;">${i}</button>`;
+        } else {
+            paginationHTML += `<button onclick="changePurchasePage(${i})" style="padding: 8px 12px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">${i}</button>`;
+        }
+    }
+    
+    // 다음 버튼
+    if (currentPurchasePage < totalPages) {
+        paginationHTML += `<button onclick="changePurchasePage(${currentPurchasePage + 1})" style="padding: 8px 12px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">다음</button>`;
+    } else {
+        paginationHTML += `<button disabled style="padding: 8px 12px; border: 1px solid #ddd; background: #f5f5f5; border-radius: 4px; cursor: not-allowed; color: #999;">다음</button>`;
+    }
+    
+    paginationHTML += `
+            </div>
+        </div>
+    `;
+    
+    paginationContainer.innerHTML = paginationHTML;
+}
+
+// 구매 이력 페이지 변경
+function changePurchasePage(page) {
+    const totalPages = Math.ceil(allPurchases.length / purchasesPerPage);
+    if (page < 1 || page > totalPages) {
+        return;
+    }
+    
+    currentPurchasePage = page;
+    displayPurchasesPage();
+}
+
+// 전역 함수로 노출
+window.changePurchasePage = changePurchasePage;
 
 // 특정 상품의 구매 이력 조회
 async function viewProductPurchaseHistory(productName) {
@@ -632,6 +742,8 @@ async function updateProductPurchase(purchaseId, originalProductName) {
             showMessage('상품 구매가 수정되었습니다.', 'success');
             document.querySelector('.modal').remove();
             loadCustomerData(); // 구매 이력 새로고침
+            // 페이지네이션을 첫 페이지로 리셋
+            currentPurchasePage = 1;
         } else {
             showMessage(result.message || '상품 구매 수정에 실패했습니다.', 'error');
         }
@@ -760,6 +872,8 @@ async function updatePurchase(purchaseId) {
             showMessage('구매 이력이 수정되었습니다.', 'success');
             document.querySelector('.modal').remove();
             loadCustomerData(); // 구매 이력 새로고침
+            // 페이지네이션을 첫 페이지로 리셋
+            currentPurchasePage = 1;
         } else {
             showMessage(result.message || '구매 이력 수정에 실패했습니다.', 'error');
         }
@@ -872,12 +986,139 @@ async function deletePurchase(purchaseId) {
             if (result.success) {
             showMessage('구매 이력이 성공적으로 삭제되었습니다.', 'success');
             loadCustomerData(); // 고객 데이터 다시 로드
+            // 페이지네이션을 첫 페이지로 리셋
+            currentPurchasePage = 1;
         } else {
             showMessage('구매 이력 삭제에 실패했습니다: ' + result.message, 'error');
         }
     } catch (error) {
         console.error('구매 이력 삭제 오류:', error);
         showMessage('구매 이력 삭제 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 상품 반품 처리
+async function returnProduct(purchaseId, productName, quantity, unitPrice, totalPrice) {
+    try {
+        console.log('상품 반품 처리:', { purchaseId, productName, quantity, unitPrice, totalPrice });
+        
+        // 반품 확인
+        if (!confirm(`"${productName}" 상품을 반품하시겠습니까?\n수량: ${quantity}개\n금액: ${totalPrice.toLocaleString('ko-KR')}원`)) {
+            return;
+        }
+        
+        // 반품 모달 생성
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h2>상품 반품</h2>
+                    <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="returnProductForm">
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">상품명</label>
+                            <input type="text" id="returnProductName" value="${productName}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" readonly>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                            <div>
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600;">반품 수량</label>
+                                <input type="number" id="returnQuantity" value="${quantity}" min="1" max="${quantity}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600;">단가 (원)</label>
+                                <input type="number" id="returnUnitPrice" value="${unitPrice}" min="0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">반품 사유</label>
+                            <select id="returnReason" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="선출고">선출고</option>
+                                <option value="불량품">불량품</option>
+                                <option value="고객변심">고객변심</option>
+                                <option value="배송오류">배송오류</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">반품 메모</label>
+                            <textarea id="returnMemo" placeholder="반품 관련 추가 정보를 입력하세요..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; height: 80px;"></textarea>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                            <h4 style="margin: 0 0 10px 0; color: #495057;">반품 정보</h4>
+                            <p style="margin: 0; font-size: 14px; color: #6c757d;">
+                                반품 처리 시 해당 상품의 재고가 증가하고, 반품 이력이 기록됩니다.
+                            </p>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" onclick="processReturn(${purchaseId}, '${productName.replace(/'/g, "\\'")}')" class="btn btn-primary">반품 처리</button>
+                    <button type="button" onclick="this.closest('.modal').remove()" class="btn btn-outline">취소</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+    } catch (error) {
+        console.error('상품 반품 오류:', error);
+        showMessage('상품 반품 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 반품 처리 실행
+async function processReturn(purchaseId, originalProductName) {
+    try {
+        const productName = document.getElementById('returnProductName').value;
+        const quantity = parseInt(document.getElementById('returnQuantity').value);
+        const unitPrice = parseInt(document.getElementById('returnUnitPrice').value);
+        const reason = document.getElementById('returnReason').value;
+        const memo = document.getElementById('returnMemo').value;
+        
+        if (!productName || quantity <= 0 || unitPrice < 0) {
+            showMessage('올바른 값을 입력해주세요.', 'error');
+            return;
+        }
+        
+        const returnData = {
+            purchaseId,
+            originalProductName,
+            productName,
+            quantity,
+            unitPrice,
+            totalPrice: quantity * unitPrice,
+            reason,
+            memo,
+            customerId: currentCustomerId
+        };
+        
+        const response = await fetch('/api/purchases/return', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(returnData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('상품 반품이 처리되었습니다.', 'success');
+            document.querySelector('.modal').remove();
+            loadCustomerData(); // 구매 이력 새로고침
+            // 페이지네이션을 첫 페이지로 리셋
+            currentPurchasePage = 1;
+        } else {
+            showMessage(result.message || '상품 반품 처리에 실패했습니다.', 'error');
+        }
+    } catch (error) {
+        console.error('반품 처리 오류:', error);
+        showMessage('네트워크 오류가 발생했습니다.', 'error');
     }
 }
 

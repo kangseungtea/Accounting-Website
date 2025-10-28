@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>제품 코드 검증 테스트</title>
+</head>
+<body>
+    <h1>제품 코드 검증 테스트</h1>
+    <input type="text" id="productCode" placeholder="제품 코드 입력" value="TEST123">
+    <button onclick="testCode()">코드 검증</button>
+    <div id="result"></div>
+
+    <script>
+        async function testCode() {
+            const code = document.getElementById('productCode').value;
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                console.log('제품 코드 검증 시작:', code);
+                const response = await fetch(`/api/products/check-code?code=${encodeURIComponent(code)}`, {
+                    credentials: 'include'
+                });
+                
+                console.log('응답 상태:', response.status);
+                const result = await response.json();
+                console.log('응답 데이터:', result);
+                
+                resultDiv.innerHTML = `
+                    <h3>검증 결과:</h3>
+                    <p>성공: ${result.success}</p>
+                    <p>존재함: ${result.exists}</p>
+                    <p>메시지: ${result.message || '없음'}</p>
+                `;
+            } catch (error) {
+                console.error('오류:', error);
+                resultDiv.innerHTML = `<p style="color: red;">오류: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
+

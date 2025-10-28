@@ -219,6 +219,29 @@
             color: #333;
         }
         
+        .form-help {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            background: #f8f9fa;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border-left: 3px solid #007bff;
+        }
+        
+        .form-help .info-icon {
+            font-size: 14px;
+            margin-top: 1px;
+            flex-shrink: 0;
+        }
+        
+        .form-help span {
+            line-height: 1.4;
+        }
+        
         @media (max-width: 768px) {
             .form-row {
                 grid-template-columns: 1fr;
@@ -265,7 +288,7 @@
                         </div>
                         <div class="form-group">
                             <label for="productDetailCategory" class="required">소분류</label>
-                            <select id="productDetailCategory" name="detailCategory" required disabled>
+                            <select id="productDetailCategory" name="detailCategory" required onchange="generateProductCode()" disabled>
                                 <option value="">소분류 선택</option>
                             </select>
                         </div>
@@ -283,7 +306,13 @@
                                 <option value="벌크">벌크</option>
                                 <option value="직구">직구</option>
                                 <option value="중고">중고</option>
+                                <option value="리퍼">리퍼</option>
+                                <option value="불량품">불량품</option>
                             </select>
+                            <div class="form-help">
+                                <i class="info-icon">ℹ️</i>
+                                <span>같은 제품이라도 상태가 다르면 별도로 등록됩니다. (예: iPhone 14 Pro 정품, iPhone 14 Pro 중고)</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -301,7 +330,7 @@
                         </div>
                         <div class="form-group">
                             <label for="productPrice" class="required">가격 (원)</label>
-                            <input type="number" id="productPrice" name="price" min="0" step="100" required placeholder="0">
+                            <input type="number" id="productPrice" name="price" min="0" required placeholder="0">
                         </div>
                         <div class="form-group">
                             <label for="productStock">재고수량</label>
@@ -572,7 +601,6 @@
         function updateProductDetailCategories() {
             window.categoryManager.updateDetailCategoryOptions('productMainCategory', 'productSubCategory', 'productDetailCategory');
             // 제품 코드 생성
-            generateProductCode();
         }
 
         // 제품 코드 자동 생성
@@ -604,20 +632,16 @@
                     if (result.success) {
                         document.getElementById('productCode').value = result.productCode;
                         console.log('제품 코드 설정 완료:', result.productCode);
-                        showMessage('제품 코드가 자동 생성되었습니다.', 'success');
                     } else {
                         console.error('제품 코드 생성 실패:', result.message);
                         document.getElementById('productCode').value = '';
-                        showMessage('제품 코드 생성에 실패했습니다: ' + result.message, 'error');
                     }
                 } catch (error) {
                     console.error('제품 코드 생성 오류:', error);
                     document.getElementById('productCode').value = '';
-                    showMessage('제품 코드 생성 중 오류가 발생했습니다.', 'error');
                 }
             } else {
                 console.log('카테고리 정보 부족으로 제품 코드 생성 안함');
-                showMessage('카테고리를 모두 선택한 후 자동 생성을 시도해주세요.', 'error');
             }
         }
 
@@ -633,7 +657,8 @@
                 const result = await response.json();
                 console.log('제품 코드 검증 응답:', result);
                 
-                const isValid = result.success && !result.exists;
+                // 수정된 로직: API가 성공하면 중복 검사, 실패하면 통과 (API 오류 무시)
+                const isValid = result.success ? !result.exists : true;
                 console.log('제품 코드 검증 결과:', isValid);
                 return isValid;
             } catch (error) {

@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>데이터 백업 관리 - 다나와 수리센터</title>
+    <link rel="stylesheet" href="../shared/style.css">
+    <style>
+        .backup-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .backup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .backup-actions {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(79, 172, 254, 0.3);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(240, 147, 251, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+        }
+
+        .backup-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .tab-button {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .backup-list {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .backup-item {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.3s ease;
+        }
+
+        .backup-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .backup-item:last-child {
+            border-bottom: none;
+        }
+
+        .backup-info {
+            flex: 1;
+        }
+
+        .backup-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .backup-details {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .backup-detail {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .backup-actions-item {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-json {
+            background-color: #4facfe;
+        }
+
+        .status-sql {
+            background-color: #43e97b;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .confirm-dialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .confirm-dialog.show {
+            display: flex;
+        }
+
+        .confirm-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .confirm-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .confirm-message {
+            color: #666;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .confirm-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        /* 설정 탭 스타일 */
+        .settings-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+
+        .settings-section {
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .settings-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .settings-section h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .settings-form {
+            max-width: 600px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .suggested-dirs {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .suggested-dirs h4 {
+            margin-bottom: 10px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .dir-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .dir-btn {
+            padding: 8px 16px;
+            background: #e9ecef;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #495057;
+            transition: all 0.3s ease;
+        }
+
+        .dir-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .settings-section input[type="time"],
+        .settings-section input[type="number"] {
+            width: 200px;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .settings-section input[type="time"]:focus,
+        .settings-section input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="backup-container">
+        <div class="backup-header">
+            <h1>데이터 백업 관리</h1>
+            <a href="../shared/index.html" class="btn btn-primary">← 메인으로</a>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalBackups">0</div>
+                <div class="stat-label">총 백업 파일</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="jsonBackups">0</div>
+                <div class="stat-label">JSON 백업</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="sqlBackups">0</div>
+                <div class="stat-label">SQL 백업</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalSize">0 MB</div>
+                <div class="stat-label">총 용량</div>
+            </div>
+        </div>
+
+        <div class="backup-actions">
+            <button class="btn btn-primary" onclick="createJsonBackup()">
+                📄 JSON 백업 생성
+            </button>
+            <button class="btn btn-success" onclick="createSqlBackup()">
+                🗄️ SQL 백업 생성
+            </button>
+            <button class="btn btn-warning" onclick="startAutoBackup()">
+                ⏰ 자동 백업 시작
+            </button>
+            <button class="btn btn-primary" onclick="refreshBackupList()">
+                🔄 새로고침
+            </button>
+        </div>
+
+        <div class="backup-tabs">
+            <button class="tab-button active" onclick="switchTab('json')">JSON 백업</button>
+            <button class="tab-button" onclick="switchTab('sql')">SQL 백업</button>
+            <button class="tab-button" onclick="switchTab('settings')">설정</button>
+        </div>
+
+        <div class="tab-content active" id="jsonTab">
+            <div class="backup-list" id="jsonBackupList">
+                <div class="loading" id="jsonLoading">
+                    <div class="spinner"></div>
+                    <div>JSON 백업 목록을 불러오는 중...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="sqlTab">
+            <div class="backup-list" id="sqlBackupList">
+                <div class="loading" id="sqlLoading">
+                    <div class="spinner"></div>
+                    <div>SQL 백업 목록을 불러오는 중...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="settingsTab">
+            <div class="settings-container">
+                <!-- 백업 위치 설정 -->
+                <div class="settings-section">
+                    <h3>📁 백업 위치 설정</h3>
+                    <div class="settings-form">
+                        <div class="form-group">
+                            <label for="jsonDir">JSON 백업 디렉토리:</label>
+                            <div class="input-group">
+                                <input type="text" id="jsonDir" placeholder="JSON 백업 파일을 저장할 디렉토리">
+                                <button class="btn btn-primary" onclick="browseDirectory('jsonDir')">찾아보기</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="sqlDir">SQL 백업 디렉토리:</label>
+                            <div class="input-group">
+                                <input type="text" id="sqlDir" placeholder="SQL 백업 파일을 저장할 디렉토리">
+                                <button class="btn btn-primary" onclick="browseDirectory('sqlDir')">찾아보기</button>
+                            </div>
+                        </div>
+                        <div class="suggested-dirs">
+                            <h4>추천 디렉토리:</h4>
+                            <div class="dir-buttons" id="suggestedDirs">
+                                <!-- 동적으로 생성됨 -->
+                            </div>
+                        </div>
+                        <button class="btn btn-success" onclick="saveDirectorySettings()">디렉토리 설정 저장</button>
+                    </div>
+                </div>
+
+                <!-- 자동 백업 설정 -->
+                <div class="settings-section">
+                    <h3>⏰ 자동 백업 설정</h3>
+                    <div class="settings-form">
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="autoBackupEnabled">
+                                <span class="checkmark"></span>
+                                자동 백업 활성화
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label for="backupTime">백업 시간:</label>
+                            <input type="time" id="backupTime" value="00:00">
+                        </div>
+                        <div class="form-group">
+                            <label for="maxBackupFiles">최대 백업 파일 수:</label>
+                            <input type="number" id="maxBackupFiles" min="1" max="100" value="30">
+                        </div>
+                        <div class="form-group">
+                            <label for="retentionDays">백업 보관 기간 (일):</label>
+                            <input type="number" id="retentionDays" min="1" max="365" value="30">
+                        </div>
+                        <button class="btn btn-success" onclick="saveAutoBackupSettings()">자동 백업 설정 저장</button>
+                    </div>
+                </div>
+
+                <!-- 고급 설정 -->
+                <div class="settings-section">
+                    <h3>⚙️ 고급 설정</h3>
+                    <div class="settings-form">
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="compressionEnabled">
+                                <span class="checkmark"></span>
+                                백업 파일 압축 (미래 기능)
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="cloudBackupEnabled">
+                                <span class="checkmark"></span>
+                                클라우드 백업 (미래 기능)
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <button class="btn btn-warning" onclick="cleanupOldBackups()">오래된 백업 파일 정리</button>
+                            <button class="btn btn-danger" onclick="resetSettings()">설정 초기화</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 확인 대화상자 -->
+    <div class="confirm-dialog" id="confirmDialog">
+        <div class="confirm-content">
+            <div class="confirm-title" id="confirmTitle">확인</div>
+            <div class="confirm-message" id="confirmMessage">정말로 실행하시겠습니까?</div>
+            <div class="confirm-actions">
+                <button class="btn btn-primary" onclick="confirmAction()">확인</button>
+                <button class="btn btn-danger" onclick="cancelAction()">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="backup-management.js"></script>
+</body>
+</html>
