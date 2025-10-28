@@ -141,8 +141,8 @@ function setLoading(form, loading) {
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
     
     if (!username || !password) {
         showMessage('모든 필드를 입력해주세요.', 'error');

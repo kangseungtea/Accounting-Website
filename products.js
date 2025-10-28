@@ -255,82 +255,27 @@ function searchProducts() {
     loadProducts(1);
 }
 
-// 3단계 카테고리 데이터 (서버에서 동적으로 로드)
-let categoryData = {};
-
-// 카테고리 데이터 로드
+// 카테고리 데이터 로드 (카테고리 매니저 사용)
 async function loadCategoryData() {
-    try {
-        const response = await fetch('/api/categories', {
-            credentials: 'include'
-        });
-        const result = await response.json();
-        
-        if (result.success) {
-            categoryData = result.data;
-        } else {
-            console.error('카테고리 데이터 로드 실패:', result.message);
-        }
-    } catch (error) {
-        console.error('카테고리 데이터 로드 오류:', error);
-    }
+    await window.categoryManager.loadCategoryData();
+    updateMainCategoryFilter();
+}
+
+// 제품 목록 필터의 대분류 옵션 업데이트
+function updateMainCategoryFilter() {
+    window.categoryManager.updateMainCategoryFilter();
 }
 
 // 하위 카테고리 업데이트
 function updateSubCategories() {
-    const mainCategory = document.getElementById('mainCategoryFilter').value;
-    const subCategorySelect = document.getElementById('subCategoryFilter');
-    const detailCategorySelect = document.getElementById('detailCategoryFilter');
-    
-    // 하위 카테고리 초기화
-    subCategorySelect.innerHTML = '<option value="">하위 카테고리</option>';
-    detailCategorySelect.innerHTML = '<option value="">상세 카테고리</option>';
-    detailCategorySelect.disabled = true;
-    
-    if (mainCategory && categoryData[mainCategory]) {
-        subCategorySelect.disabled = false;
-        
-        // 하위 카테고리 옵션 추가
-        Object.keys(categoryData[mainCategory]).forEach(subCategory => {
-            const option = document.createElement('option');
-            option.value = subCategory;
-            option.textContent = subCategory;
-            subCategorySelect.appendChild(option);
-        });
-    } else {
-        subCategorySelect.disabled = true;
-    }
-    
-    // 소분류 초기화
-    detailCategorySelect.disabled = true;
-    
+    window.categoryManager.updateSubCategories();
     // 필터 적용
     filterProducts();
 }
 
 // 상세 카테고리 업데이트
 function updateDetailCategories() {
-    const mainCategory = document.getElementById('mainCategoryFilter').value;
-    const subCategory = document.getElementById('subCategoryFilter').value;
-    const detailCategorySelect = document.getElementById('detailCategoryFilter');
-    
-    // 상세 카테고리 초기화
-    detailCategorySelect.innerHTML = '<option value="">상세 카테고리</option>';
-    
-    if (mainCategory && subCategory && categoryData[mainCategory] && categoryData[mainCategory][subCategory]) {
-        detailCategorySelect.disabled = false;
-        
-        // 상세 카테고리 옵션 추가
-        categoryData[mainCategory][subCategory].forEach(detailCategory => {
-            const option = document.createElement('option');
-            option.value = detailCategory;
-            option.textContent = detailCategory;
-            detailCategorySelect.appendChild(option);
-        });
-    } else {
-        detailCategorySelect.disabled = true;
-    }
-    
+    window.categoryManager.updateDetailCategories();
     // 필터 적용
     filterProducts();
 }
@@ -378,29 +323,44 @@ function clearProductFilters() {
     loadProducts(1);
 }
 
-// 카테고리 옵션 로드
+// 카테고리 옵션 로드 (3단계 카테고리 시스템)
 async function loadCategoryOptions() {
     try {
-        const response = await fetch('/api/categories', {
-            credentials: 'include'
-        });
-        const result = await response.json();
-        
-        if (result.success) {
-            const categorySelect = document.getElementById('productCategory');
-            categorySelect.innerHTML = '<option value="">카테고리 선택</option>';
-            
-            // 대분류 카테고리 옵션 추가
-            Object.keys(result.data).forEach(mainCategory => {
-                const option = document.createElement('option');
-                option.value = mainCategory;
-                option.textContent = mainCategory;
-                categorySelect.appendChild(option);
-            });
+        // 카테고리 데이터가 로드되지 않았다면 로드
+        if (!window.categoryManager.isDataLoaded()) {
+            await window.categoryManager.loadCategoryData();
         }
+        
+        // 대분류 옵션 업데이트
+        window.categoryManager.updateMainCategoryOptions('productMainCategory');
+        
+        // 중분류, 소분류 초기화
+        const subCategorySelect = document.getElementById('productSubCategory');
+        const detailCategorySelect = document.getElementById('productDetailCategory');
+        
+        subCategorySelect.innerHTML = '<option value="">중분류 선택</option>';
+        detailCategorySelect.innerHTML = '<option value="">소분류 선택</option>';
+        subCategorySelect.disabled = true;
+        detailCategorySelect.disabled = true;
+        
+        // 이벤트 리스너 추가
+        const mainCategorySelect = document.getElementById('productMainCategory');
+        mainCategorySelect.onchange = updateProductSubCategories;
+        subCategorySelect.onchange = updateProductDetailCategories;
+        
     } catch (error) {
         console.error('카테고리 로드 오류:', error);
     }
+}
+
+// 제품 모달에서 중분류 카테고리 업데이트
+function updateProductSubCategories() {
+    window.categoryManager.updateSubCategoryOptions('productMainCategory', 'productSubCategory', 'productDetailCategory');
+}
+
+// 제품 모달에서 소분류 카테고리 업데이트
+function updateProductDetailCategories() {
+    window.categoryManager.updateDetailCategoryOptions('productMainCategory', 'productSubCategory', 'productDetailCategory');
 }
 
 // 새 제품 등록 모달 표시
@@ -433,7 +393,30 @@ async function editProduct(productId) {
             
             document.getElementById('productName').value = product.name;
             document.getElementById('productCode').value = product.productCode || '';
-            document.getElementById('productCategory').value = product.category;
+            
+            // 3단계 카테고리 설정
+            const mainCategory = product.main_category || product.mainCategory || '';
+            const subCategory = product.sub_category || product.subCategory || '';
+            const detailCategory = product.detail_category || product.detailCategory || '';
+            
+            document.getElementById('productMainCategory').value = mainCategory;
+            
+            // 대분류가 있으면 중분류 업데이트
+            if (mainCategory) {
+                updateProductSubCategories();
+                setTimeout(() => {
+                    document.getElementById('productSubCategory').value = subCategory;
+                    
+                    // 중분류가 있으면 소분류 업데이트
+                    if (subCategory) {
+                        updateProductDetailCategories();
+                        setTimeout(() => {
+                            document.getElementById('productDetailCategory').value = detailCategory;
+                        }, 100);
+                    }
+                }, 100);
+            }
+            
             document.getElementById('productBrand').value = product.brand || '';
             document.getElementById('productPrice').value = product.price;
             document.getElementById('productStock').value = product.stockQuantity;
@@ -565,12 +548,24 @@ async function viewProductDetail(productId) {
                         ` : ''}
                     </div>
                 </div>
+                <div style="margin-top: 40px; border-top: 2px solid #e0e0e0; padding-top: 30px;">
+                    <h4 style="margin-bottom: 20px; color: #333;">📊 구매/판매 이력 및 수리 부품 사용 내역</h4>
+                    <div id="productPurchasesList" style="max-height: 400px; overflow-y: auto;">
+                        <div style="text-align: center; padding: 20px; color: #666;">
+                            <div class="spinner" style="display: inline-block; width: 20px; height: 20px; border: 2px solid #f3f3f3; border-top: 2px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                            <span style="margin-left: 10px;">구매/판매 이력 및 수리 부품 사용 내역을 불러오는 중...</span>
+                        </div>
+                    </div>
+                </div>
             `;
             
             const modal = document.getElementById('productDetailModal');
             if (modal) {
                 modal.style.display = 'flex';
                 console.log('제품 상세 모달 표시됨');
+                
+                // 구매 이력 로드
+                loadProductPurchases(productId);
             } else {
                 console.error('productDetailModal 요소를 찾을 수 없습니다!');
                 showMessage('제품 상세 모달을 찾을 수 없습니다.', 'error');
@@ -581,6 +576,145 @@ async function viewProductDetail(productId) {
     } catch (error) {
         console.error('제품 상세 정보 로드 오류:', error);
         showMessage('네트워크 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 제품별 구매 이력 로드
+async function loadProductPurchases(productId) {
+    try {
+        console.log('제품별 구매 이력 로드 시작, 제품 ID:', productId);
+        
+        const response = await fetch(`/api/products/${productId}/purchases`, {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('제품별 구매 이력 API 응답:', result);
+        
+        const purchasesList = document.getElementById('productPurchasesList');
+        if (!purchasesList) {
+            console.error('productPurchasesList 요소를 찾을 수 없습니다!');
+            return;
+        }
+        
+        if (result.success) {
+            const purchases = result.data;
+            console.log('구매 이력 데이터:', purchases);
+            
+            if (purchases.length === 0) {
+                purchasesList.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📦</div>
+                        <p>아직 구매/판매 이력 및 수리 부품 사용 내역이 없습니다.</p>
+                    </div>
+                `;
+            } else {
+                // 안전한 숫자 변환 함수
+                const formatNumber = (value) => {
+                    if (value === null || value === undefined || isNaN(value)) {
+                        return '0';
+                    }
+                    return Number(value).toLocaleString('ko-KR');
+                };
+                
+                // 안전한 날짜 포맷팅
+                const formatDate = (dateStr) => {
+                    if (!dateStr) return '-';
+                    try {
+                        return new Date(dateStr).toLocaleDateString('ko-KR');
+                    } catch (e) {
+                        return dateStr;
+                    }
+                };
+                
+                // 구매/판매 이력 및 수리 부품 사용 내역 HTML 생성
+                const purchasesHTML = purchases.map(purchase => {
+                    // 구매/판매 이력인 경우
+                    if (purchase.source_type === '구매/판매') {
+                        const typeClass = purchase.type === '판매' ? 'type-sale' : 
+                                        purchase.type === '구매' ? 'type-purchase' : 'type-preorder';
+                        const typeIcon = purchase.type === '판매' ? '💰' : 
+                                       purchase.type === '구매' ? '🛒' : '📤';
+                        
+                        return `
+                            <div style="border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 16px; overflow: hidden;">
+                                <div style="background: #f8f9fa; padding: 12px 16px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 18px;">${typeIcon}</span>
+                                        <span class="status-badge ${typeClass}" style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">${purchase.type}</span>
+                                        <span style="font-weight: 600; color: #333;">${purchase.purchase_code || '-'}</span>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 14px; color: #666;">${formatDate(purchase.purchase_date)}</div>
+                                        <div style="font-size: 16px; font-weight: bold; color: #2196F3;">${formatNumber(purchase.total_amount)}원</div>
+                                    </div>
+                                </div>
+                                <div style="padding: 16px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center;">
+                                    <div><strong>고객:</strong> ${purchase.customer_name || '-'}</div>
+                                    <div><strong>결제방법:</strong> ${purchase.payment_method || '-'}</div>
+                                    <div><strong>공급가액:</strong> ${formatNumber(Math.round(purchase.total_amount / 1.1))}원</div>
+                                    <div><strong>부가세:</strong> ${formatNumber(purchase.total_amount - Math.round(purchase.total_amount / 1.1))}원</div>
+                                    <div><strong>합계:</strong> ${formatNumber(purchase.total_amount)}원</div>
+                                    ${purchase.notes ? `<div><strong>메모:</strong> ${purchase.notes}</div>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    } 
+                    // 수리 부품 사용 내역인 경우
+                    else if (purchase.source_type === '수리부품') {
+                        return `
+                            <div style="border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 16px; overflow: hidden;">
+                                <div style="background: #fff3e0; padding: 12px 16px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 18px;">🔧</span>
+                                        <span class="status-badge type-repair" style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; background: #ff9800; color: white;">수리부품</span>
+                                        <span style="font-weight: 600; color: #333;">수리 #${purchase.id}</span>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 14px; color: #666;">${formatDate(purchase.purchase_date)}</div>
+                                        <div style="font-size: 16px; font-weight: bold; color: #ff9800;">${formatNumber(purchase.total_price)}원</div>
+                                    </div>
+                                </div>
+                                <div style="padding: 16px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center;">
+                                    <div><strong>고객:</strong> ${purchase.customer_name || '-'}</div>
+                                    <div><strong>기사:</strong> ${purchase.technician || '-'}</div>
+                                    <div><strong>상태:</strong> ${purchase.status || '-'}</div>
+                                    <div><strong>수량:</strong> ${purchase.quantity}개</div>
+                                    <div><strong>단가:</strong> ${formatNumber(purchase.unit_price)}원</div>
+                                    <div><strong>총액:</strong> ${formatNumber(purchase.total_price)}원</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }).join('');
+                
+                purchasesList.innerHTML = purchasesHTML;
+            }
+        } else {
+            purchasesList.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: #f44336;">
+                    <div style="font-size: 24px; margin-bottom: 8px;">⚠️</div>
+                    <p>구매/판매 이력 및 수리 부품 사용 내역을 불러오는데 실패했습니다.</p>
+                    <p style="font-size: 14px; color: #666;">${result.message || '알 수 없는 오류가 발생했습니다.'}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('제품별 구매 이력 로드 오류:', error);
+        const purchasesList = document.getElementById('productPurchasesList');
+        if (purchasesList) {
+            purchasesList.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: #f44336;">
+                    <div style="font-size: 24px; margin-bottom: 8px;">❌</div>
+                    <p>네트워크 오류가 발생했습니다.</p>
+                    <p style="font-size: 14px; color: #666;">${error.message}</p>
+                </div>
+            `;
+        }
     }
 }
 
@@ -625,6 +759,17 @@ document.getElementById('productForm').addEventListener('submit', async (e) => {
     // 숫자 필드 변환
     productData.price = parseInt(productData.price);
     productData.stockQuantity = parseInt(productData.stockQuantity);
+    
+    // 3단계 카테고리 데이터 정리
+    if (!productData.mainCategory) {
+        productData.mainCategory = '';
+    }
+    if (!productData.subCategory) {
+        productData.subCategory = '';
+    }
+    if (!productData.detailCategory) {
+        productData.detailCategory = '';
+    }
     
     const isEdit = editingProductId !== null;
     
@@ -784,10 +929,8 @@ document.getElementById('categoryForm').addEventListener('submit', async (e) => 
             showMessage('카테고리가 성공적으로 추가되었습니다!', 'success');
             closeCategoryModal();
             
-            // 카테고리 데이터 업데이트
-            if (result.categoryData) {
-                updateCategoryData(result.categoryData);
-            }
+            // 카테고리 데이터 새로고침
+            await loadCategoryData();
             
             // 필터 새로고침
             updateSubCategories();
@@ -826,4 +969,13 @@ async function logout() {
         window.location.href = 'index.html';
     }
 }
+
+// 함수들을 전역으로 노출
+window.viewProductDetail = viewProductDetail;
+window.editProduct = editProduct;
+window.deleteProduct = deleteProduct;
+window.closeProductDetailModal = closeProductDetailModal;
+window.showMessage = showMessage;
+window.updateProductSubCategories = updateProductSubCategories;
+window.updateProductDetailCategories = updateProductDetailCategories;
 

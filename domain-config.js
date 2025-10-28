@@ -35,10 +35,11 @@ const domainConfig = {
         saveUninitialized: false,
         cookie: {
             secure: false, // 개발 환경에서는 false
-            httpOnly: true,
+            httpOnly: false, // JavaScript에서 접근 가능하도록 변경
             maxAge: 24 * 60 * 60 * 1000, // 24시간
             sameSite: 'lax' // CSRF 보호
-        }
+        },
+        name: 'connect.sid' // 명시적 세션 이름
     }
 };
 

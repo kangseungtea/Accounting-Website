@@ -7,47 +7,154 @@ if (typeof currentCustomerId === 'undefined') {
 
 // 수리 이력 수정
 async function editRepair(repairId) {
+    console.log('editRepair 호출됨, repairId:', repairId);
+    
     try {
+        console.log('API 요청 시작:', `/api/repairs/${repairId}`);
         const response = await fetch(`/api/repairs/${repairId}`, {
             credentials: 'include'
         });
+        
+        console.log('API 응답 상태:', response.status);
+        console.log('API 응답 OK:', response.ok);
+        
         const result = await response.json();
+        console.log('API 응답 데이터:', result);
         
         if (result.success) {
             const repair = result.data;
-            document.getElementById('repairModalTitle').textContent = '수리 이력 수정';
+            console.log('수리 이력 데이터:', repair);
+            
+            const repairModalTitle = document.getElementById('repairModalTitle');
+            console.log('repairModalTitle 요소:', repairModalTitle);
+            if (repairModalTitle) {
+                repairModalTitle.textContent = '수리 이력 수정';
+            } else {
+                console.error('repairModalTitle 요소를 찾을 수 없습니다.');
+            }
             
             // 폼에 기존 데이터 채우기
-            document.getElementById('repairDate').value = new Date(repair.repairDate).toISOString().split('T')[0];
-            document.getElementById('deviceModel').value = repair.deviceModel || '';
-            document.getElementById('problem').value = repair.problem;
-            document.getElementById('solution').value = repair.solution || '';
+            const repairDate = repair.repairDate || repair.repair_date;
+            const deviceModel = repair.deviceModel || repair.device_model || '';
+            const problem = repair.problem || '';
+            const solution = repair.solution || '';
+            const warranty = repair.warranty || '';
+            const technician = repair.technician || '';
+            const status = repair.status || '완료';
+            const vatOption = repair.vatOption || repair.vat_option || 'included';
+            
+            console.log('폼 데이터 설정:', {
+                repairDate, deviceModel, problem, solution, 
+                warranty, technician, status, vatOption
+            });
+            
+            // 폼 요소들 안전하게 접근
+            const repairDateEl = document.getElementById('repairDate');
+            const deviceModelEl = document.getElementById('deviceModel');
+            const problemEl = document.getElementById('problem');
+            const solutionEl = document.getElementById('solution');
+            const warrantyEl = document.getElementById('warranty');
+            const repairTechnicianEl = document.getElementById('repairTechnician');
+            const repairStatusEl = document.getElementById('repairStatus');
+            
+            console.log('폼 요소들:', {
+                repairDateEl, deviceModelEl, problemEl, solutionEl,
+                warrantyEl, repairTechnicianEl, repairStatusEl
+            });
+            
+            if (repairDateEl && repairDate) {
+                repairDateEl.value = new Date(repairDate).toISOString().split('T')[0];
+            }
+            if (deviceModelEl) {
+                deviceModelEl.value = deviceModel;
+            }
+            if (problemEl) {
+                problemEl.value = problem;
+            }
+            if (solutionEl) {
+                solutionEl.value = solution;
+            }
+            if (warrantyEl) {
+                warrantyEl.value = warranty;
+            }
+            if (repairTechnicianEl) {
+                repairTechnicianEl.value = technician;
+            }
+            if (repairStatusEl) {
+                repairStatusEl.value = status;
+            }
             
             // 부품 데이터 로드
-            loadPartsData(repair.parts || []);
+            console.log('부품 데이터 로드:', repair.parts);
+            if (repair.parts && Array.isArray(repair.parts)) {
+                console.log('부품 데이터 개수:', repair.parts.length);
+                repair.parts.forEach((part, index) => {
+                    console.log(`부품 ${index + 1}:`, part);
+                });
+                
+                if (typeof window.loadPartsData === 'function') {
+                    window.loadPartsData(repair.parts);
+                } else {
+                    console.error('window.loadPartsData 함수를 찾을 수 없습니다.');
+                }
+            } else {
+                console.log('부품 데이터가 없거나 배열이 아닙니다:', repair.parts);
+                if (typeof window.loadPartsData === 'function') {
+                    window.loadPartsData([]);
+                }
+            }
             
             // 인건비 데이터 로드
             console.log('수리 이력 수정 - 인건비 데이터:', repair.labor);
-            loadLaborData(repair.labor || []);
-            
-            document.getElementById('warranty').value = repair.warranty || '';
-            document.getElementById('repairTechnician').value = repair.technician || '';
-            document.getElementById('repairStatus').value = repair.status || '완료';
+            console.log('laborList 요소 존재 여부:', !!document.getElementById('laborList'));
+            if (typeof window.loadLaborData === 'function') {
+                console.log('loadLaborData 함수 호출 시작');
+                window.loadLaborData(repair.labor || []);
+                console.log('loadLaborData 함수 호출 완료');
+            } else {
+                console.error('window.loadLaborData 함수를 찾을 수 없습니다.');
+            }
             
             // 부가세 옵션 로드
-            const vatOption = repair.vatOption || 'included';
             const vatRadio = document.querySelector(`input[name="vatOption"][value="${vatOption}"]`);
+            console.log('부가세 라디오 버튼:', vatRadio, '값:', vatOption);
             if (vatRadio) {
                 vatRadio.checked = true;
+            } else {
+                console.error('부가세 라디오 버튼을 찾을 수 없습니다. 값:', vatOption);
             }
             
             // 수정 모드임을 표시
-            document.getElementById('repairForm').setAttribute('data-repair-id', repairId);
-            document.getElementById('repairModal').style.display = 'flex';
+            const repairForm = document.getElementById('repairForm');
+            const repairModal = document.getElementById('repairModal');
+            
+            console.log('repairForm 요소:', repairForm);
+            console.log('repairModal 요소:', repairModal);
+            
+            if (repairForm) {
+                repairForm.setAttribute('data-repair-id', repairId);
+            } else {
+                console.error('repairForm 요소를 찾을 수 없습니다.');
+            }
+            
+            if (repairModal) {
+                repairModal.style.display = 'flex';
+    } else {
+                console.error('repairModal 요소를 찾을 수 없습니다.');
+            }
             
             // 스마트 기능 초기화
-            initializeSmartFeatures();
-            initializeModalDrag();
+            if (typeof window.initializeSmartFeatures === 'function') {
+                window.initializeSmartFeatures();
+            } else {
+                console.error('window.initializeSmartFeatures 함수를 찾을 수 없습니다.');
+            }
+            
+            if (typeof window.initializeModalDrag === 'function') {
+                window.initializeModalDrag();
+            } else {
+                console.error('window.initializeModalDrag 함수를 찾을 수 없습니다.');
+            }
         } else {
             showMessage('수리 이력 정보를 불러오는데 실패했습니다.', 'error');
         }
@@ -58,6 +165,8 @@ async function editRepair(repairId) {
 
 // 수리 이력 삭제
 async function deleteRepair(repairId) {
+    console.log('deleteRepair 호출됨, repairId:', repairId);
+    
     if (!confirm('정말로 이 수리 이력을 삭제하시겠습니까?')) {
         return;
     }
@@ -92,25 +201,99 @@ async function deleteRepair(repairId) {
 }
 
 // 수리 이력 상세 보기
-function showRepairDetailModal(repair) {
+async function showRepairDetailModal(repair) {
+    console.log('showRepairDetailModal 호출됨, repair 데이터:', repair);
+    
+    // repair가 ID만 전달된 경우 처리
+    if (typeof repair === 'number' || typeof repair === 'string') {
+        console.log('repair ID로 전달됨, 상세 정보 조회 중...', repair);
+        try {
+            const response = await fetch(`/api/repairs/${repair}`, {
+                credentials: 'include'
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+                repair = result.data;
+                console.log('상세 정보 조회 완료:', repair);
+            } else {
+                console.error('상세 정보 조회 실패:', result.message);
+                showMessage('수리 이력 정보를 불러오는데 실패했습니다.', 'error');
+                return;
+            }
+        } catch (error) {
+            console.error('상세 정보 조회 오류:', error);
+            showMessage('네트워크 오류가 발생했습니다.', 'error');
+            return;
+        }
+    }
+    
     const modal = document.getElementById('repairDetailModal');
     if (!modal) {
         console.error('repairDetailModal 요소를 찾을 수 없습니다.');
-            return;
-        }
+        return;
+    }
         
     // 수리 이력 상세 정보 표시
-    document.getElementById('detailRepairDate').textContent = new Date(repair.repairDate).toLocaleDateString('ko-KR');
-    document.getElementById('detailDeviceModel').textContent = repair.deviceModel || '-';
-    document.getElementById('detailProblem').textContent = repair.problem;
-    document.getElementById('detailSolution').textContent = repair.solution || '-';
-    document.getElementById('detailWarranty').textContent = repair.warranty || '-';
-    document.getElementById('detailTechnician').textContent = repair.technician || '-';
-    document.getElementById('detailStatus').textContent = repair.status;
+    console.log('repair.repairDate:', repair.repairDate);
+    console.log('repair.deviceModel:', repair.deviceModel);
+    console.log('repair.problem:', repair.problem);
+    console.log('repair.solution:', repair.solution);
+    console.log('repair.warranty:', repair.warranty);
+    console.log('repair.technician:', repair.technician);
+    console.log('repair.status:', repair.status);
+    
+    const detailRepairDate = document.getElementById('detailRepairDate');
+    const detailDeviceModel = document.getElementById('detailDeviceModel');
+    const detailProblem = document.getElementById('detailProblem');
+    const detailSolution = document.getElementById('detailSolution');
+    const detailWarranty = document.getElementById('detailWarranty');
+    const detailTechnician = document.getElementById('detailTechnician');
+    const detailStatus = document.getElementById('detailStatus');
+    
+    console.log('detailRepairDate 요소:', detailRepairDate);
+    console.log('detailDeviceModel 요소:', detailDeviceModel);
+    console.log('detailProblem 요소:', detailProblem);
+    console.log('detailSolution 요소:', detailSolution);
+    console.log('detailWarranty 요소:', detailWarranty);
+    console.log('detailTechnician 요소:', detailTechnician);
+    console.log('detailStatus 요소:', detailStatus);
+    
+    if (detailRepairDate) {
+        const repairDate = repair.repairDate || repair.repair_date;
+        detailRepairDate.textContent = repairDate ? new Date(repairDate).toLocaleDateString('ko-KR') : '-';
+    }
+    if (detailDeviceModel) {
+        const deviceModel = repair.deviceModel || repair.device_model || '-';
+        detailDeviceModel.textContent = deviceModel;
+        console.log('detailDeviceModel에 설정된 값:', deviceModel);
+    }
+    if (detailProblem) {
+        detailProblem.textContent = repair.problem || '-';
+    }
+    if (detailSolution) {
+        detailSolution.textContent = repair.solution || '-';
+    }
+    if (detailWarranty) {
+        detailWarranty.textContent = repair.warranty || '-';
+    }
+    if (detailTechnician) {
+        detailTechnician.textContent = repair.technician || '-';
+    }
+    if (detailStatus) {
+        detailStatus.textContent = repair.status || '-';
+    }
     
     // 부품 정보 표시
+    console.log('부품 정보 표시 시작, repair.parts:', repair.parts);
     const partsDisplay = formatPartsDisplay(repair.parts);
-    document.getElementById('detailParts').innerHTML = partsDisplay;
+    const detailPartsElement = document.getElementById('detailParts');
+    if (detailPartsElement) {
+        detailPartsElement.innerHTML = partsDisplay;
+        console.log('부품 정보 표시 완료');
+    } else {
+        console.error('detailParts 요소를 찾을 수 없습니다.');
+    }
     
     // 인건비 정보 표시
     const laborDisplay = formatLaborDisplay(repair.labor);
@@ -119,20 +302,34 @@ function showRepairDetailModal(repair) {
     // 비용 정보 표시
     const supplyAmount = getSupplyAmount(repair);
     const vatAmount = getVatAmount(repair);
-    const totalCost = repair.totalCost || 0;
+    const totalCost = repair.totalCost || repair.total_cost || 0;
     const vatDescription = getVatDescription(repair);
     
-    document.getElementById('detailSupplyAmount').textContent = supplyAmount.toLocaleString('ko-KR') + '원';
-    document.getElementById('detailVatAmount').textContent = vatAmount.toLocaleString('ko-KR') + '원';
-    document.getElementById('detailTotalCost').textContent = totalCost.toLocaleString('ko-KR') + '원';
-    document.getElementById('detailVatDescription').textContent = vatDescription;
+    const detailSupplyAmount = document.getElementById('detailSupplyAmount');
+    const detailVatAmount = document.getElementById('detailVatAmount');
+    const detailTotalCost = document.getElementById('detailTotalCost');
+    const detailVatDescription = document.getElementById('detailVatDescription');
+    
+    if (detailSupplyAmount) {
+        detailSupplyAmount.textContent = supplyAmount.toLocaleString('ko-KR') + '원';
+    }
+    if (detailVatAmount) {
+        detailVatAmount.textContent = vatAmount.toLocaleString('ko-KR') + '원';
+    }
+    if (detailTotalCost) {
+        detailTotalCost.textContent = totalCost.toLocaleString('ko-KR') + '원';
+    }
+    if (detailVatDescription) {
+        detailVatDescription.textContent = vatDescription;
+    }
     
     // 부가세 섹션 표시/숨김
     const vatSection = document.getElementById('detailVatSection');
     if (vatSection) {
-        if (repair.vatOption === 'excluded') {
+        const vatOption = repair.vatOption || repair.vat_option;
+        if (vatOption === 'excluded') {
             vatSection.style.display = 'block';
-        } else {
+            } else {
             vatSection.style.display = 'none';
         }
     }
@@ -410,17 +607,65 @@ function printRepairDetail() {
 
 // 부품 표시 형식 포맷
 function formatPartsDisplay(parts) {
-    if (!parts || parts.length === 0) return '-';
+    console.log('formatPartsDisplay 호출됨, parts 데이터:', parts);
+    console.log('parts 타입:', typeof parts);
+    console.log('parts 길이:', parts ? parts.length : 'undefined');
+    
+    if (!parts || parts.length === 0) {
+        console.log('parts 데이터가 없거나 빈 배열입니다.');
+        return '<div style="text-align: center; padding: 20px; color: #666; font-style: italic;">사용된 부품이 없습니다.</div>';
+    }
     
     // 새로운 형식 (객체 배열)
     if (typeof parts[0] === 'object' && parts[0].name) {
-        return parts.map(part => 
-            `${part.name} (${part.quantity}개 × ${part.unitPrice.toLocaleString('ko-KR')}원 = ${part.totalPrice.toLocaleString('ko-KR')}원)`
-        ).join('<br>');
+        console.log('새로운 형식의 parts 데이터 포맷:', parts);
+        
+        // 부품별 총액 계산
+        const totalPartsCost = parts.reduce((sum, part) => {
+            const quantity = part.quantity || 0;
+            const unitPrice = part.unitPrice || 0;
+            const totalPrice = part.totalPrice || (quantity * unitPrice);
+            console.log(`부품 ${part.name} 계산: 수량=${quantity}, 단가=${unitPrice}, 총액=${totalPrice}`);
+            return sum + totalPrice;
+        }, 0);
+        
+        console.log('부품 총액:', totalPartsCost);
+        
+        const partsHTML = parts.map(part => {
+            console.log('부품 데이터 처리:', part);
+            // 안전한 숫자 처리
+            const quantity = part.quantity || 0;
+            const unitPrice = part.unitPrice || 0;
+            const totalPrice = part.totalPrice || (quantity * unitPrice);
+            
+            console.log(`부품 ${part.name}: 수량=${quantity}, 단가=${unitPrice}, 총액=${totalPrice}`);
+            
+            return `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #333; margin-bottom: 2px;">${part.name}</div>
+                        <div style="font-size: 12px; color: #666;">수량: ${quantity}개 × 단가: ${unitPrice.toLocaleString('ko-KR')}원</div>
+                    </div>
+                    <div style="text-align: right; font-weight: bold; color: #1976d2;">
+                        ${totalPrice.toLocaleString('ko-KR')}원
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        return `
+            <div style="margin-bottom: 16px;">
+                ${partsHTML}
+            </div>
+            <div style="text-align: right; padding: 12px; background: #f8f9fa; border-radius: 6px; margin-top: 8px;">
+                <span style="font-weight: bold; color: #333;">부품 총액: ${totalPartsCost.toLocaleString('ko-KR')}원</span>
+            </div>
+        `;
     } 
     // 기존 형식 (문자열 배열)
     else {
-        return parts.join(', ');
+        console.log('기존 형식의 parts 데이터:', parts);
+        return parts.map(part => `<div style="padding: 4px 0;">• ${part}</div>`).join('');
     }
 }
 
@@ -436,9 +681,11 @@ function formatLaborDisplay(labor) {
     // 새로운 형식 (객체 배열)
     if (typeof labor[0] === 'object' && labor[0].description) {
         console.log('새로운 형식의 labor 데이터 포맷:', labor);
-        return labor.map(item => 
-            `${item.description}: ${item.amount.toLocaleString('ko-KR')}원`
-        ).join('<br>');
+        return labor.map(item => {
+            // 안전한 숫자 처리
+            const amount = item.amount || 0;
+            return `${item.description}: ${amount.toLocaleString('ko-KR')}원`;
+        }).join('<br>');
     } 
     // 기존 형식 (숫자)
     else if (typeof labor === 'number') {
@@ -538,34 +785,49 @@ function displayRepairs(repairs) {
             }
         };
         
+        // 상태별 CSS 클래스 반환
+        const getStatusClass = (status) => {
+            switch (status) {
+                case '완료': return 'status-completed';
+                case '진행중': return 'status-progress';
+                case '대기': return 'status-waiting';
+                case '위탁접수': return 'status-received';
+                case '취소': return 'status-cancelled';
+                default: return 'status-default';
+            }
+        };
+        
         // 공급가액, 부가세, 총 비용 계산
         const supplyAmount = getSupplyAmount(repair);
         const vatAmount = getVatAmount(repair);
         const totalCost = repair.totalCost || repair.total_cost || 0;
         
         row.innerHTML = `
-            <td>${formatDate(repair.repairDate || repair.repair_date)}</td>
-            <td>${repair.deviceModel || repair.device_model || '-'}</td>
-            <td>${repair.problem || '-'}</td>
-            <td>${repair.status || '-'}</td>
-            <td>${repair.technician || '-'}</td>
-            <td>
+            <td style="white-space: nowrap;">${formatDate(repair.repairDate || repair.repair_date)}</td>
+            <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(repair.deviceModel || repair.device_model || '-').replace(/"/g, '&quot;')}">${repair.deviceModel || repair.device_model || '-'}</td>
+            <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(repair.problem || '-').replace(/"/g, '&quot;')}">${repair.problem || '-'}</td>
+            <td style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(repair.solution || '-').replace(/"/g, '&quot;')}">${repair.solution || '-'}</td>
+            <td style="text-align: right; min-width: 120px;">
                 <div style="text-align: right;">
-                    <div style="font-size: 12px; color: #666; margin-bottom: 2px;">
+                    <div style="font-size: 11px; color: #666; margin-bottom: 1px;">
                         공급가액: ${formatNumber(supplyAmount)}원
-            </div>
-                    <div style="font-size: 12px; color: #666; margin-bottom: 2px;">
+                    </div>
+                    <div style="font-size: 11px; color: #666; margin-bottom: 1px;">
                         부가세: ${formatNumber(vatAmount)}원
-            </div>
-                    <div style="font-size: 14px; font-weight: bold; color: #1976d2;">
+                    </div>
+                    <div style="font-size: 13px; font-weight: bold; color: #1976d2;">
                         총 ${formatNumber(totalCost)}원
-            </div>
-            </div>
+                    </div>
+                </div>
             </td>
-            <td>
-                <button onclick="showRepairDetailModal(${JSON.stringify(repair).replace(/"/g, '&quot;')})" class="btn btn-sm btn-info">상세</button>
-                <button onclick="editRepair(${repair.id})" class="btn btn-sm btn-warning">수정</button>
-                <button onclick="deleteRepair(${repair.id})" class="btn btn-sm btn-danger">삭제</button>
+            <td style="text-align: center; white-space: nowrap;">
+                <span class="status-badge ${getStatusClass(repair.status)}">${repair.status || '-'}</span>
+            </td>
+            <td style="white-space: nowrap; font-size: 12px;">${repair.warranty || '-'}</td>
+            <td style="text-align: center; white-space: nowrap;">
+                <button onclick="showRepairDetailModal(${JSON.stringify(repair).replace(/"/g, '&quot;')})" class="btn btn-sm btn-info" title="상세보기">상세</button>
+                <button onclick="editRepair(${repair.id})" class="btn btn-sm btn-warning" title="수정">수정</button>
+                <button onclick="deleteRepair(${repair.id})" class="btn btn-sm btn-danger" title="삭제">삭제</button>
             </td>
         `;
         
@@ -787,8 +1049,51 @@ async function loadRepairs() {
     }
 }
 
-// loadRepairs 함수를 전역으로 노출
+// 메시지 표시 함수
+function showMessage(message, type) {
+    // 기존 메시지 제거
+    const existingMessage = document.querySelector('.message');
+    if (existingMessage) {
+        existingMessage.remove();
+    }
+    
+    // 새 메시지 생성
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message message-${type}`;
+    messageDiv.textContent = message;
+    
+    // 스타일 적용
+    messageDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 4px;
+        color: white;
+        font-weight: 500;
+        z-index: 10000;
+        max-width: 300px;
+                        word-wrap: break-word;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        ${type === 'success' ? 'background-color: #4caf50;' : 'background-color: #f44336;'}
+    `;
+    
+    document.body.appendChild(messageDiv);
+    
+    // 3초 후 자동 제거
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.remove();
+        }
+    }, 3000);
+}
+
+// 함수들을 전역으로 노출
 window.loadRepairs = loadRepairs;
+window.showRepairDetailModal = showRepairDetailModal;
+window.editRepair = editRepair;
+window.deleteRepair = deleteRepair;
+window.showMessage = showMessage;
 
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', function() {

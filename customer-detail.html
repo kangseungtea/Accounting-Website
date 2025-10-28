@@ -122,7 +122,8 @@
                             <th>구매코드</th>
                             <th>구매일</th>
                             <th>구분</th>
-                            <th>상품목록</th>
+                            <th>공급가액</th>
+                            <th>부가세</th>
                             <th>총금액</th>
                             <th>결제방법</th>
                             <th>상태</th>
@@ -382,7 +383,7 @@
                 
                 <div class="detail-section">
                     <h3>🔩 사용 부품</h3>
-                    <div id="detailParts">-</div>
+                    <div id="detailParts" style="min-height: 50px; padding: 16px; background: #fafafa; border-radius: 8px; border: 1px solid #e0e0e0;">-</div>
                 </div>
                 
                 <div class="detail-section">
@@ -442,7 +443,7 @@
                     <select id="purchaseType" name="type" required onchange="updatePurchaseCodeGeneration()">
                         <option value="">선택하세요</option>
                         <option value="판매">판매</option>
-                        <option value="매입">매입</option>
+                        <option value="구매">구매</option>
                         <option value="선출고">선출고</option>
                     </select>
                 </div>
@@ -452,6 +453,7 @@
                         <div class="item-row">
                             <div class="autocomplete-container">
                                 <input type="text" name="itemName" placeholder="제품명 입력..." required autocomplete="off" onkeyup="filterProducts(this)" onfocus="showProductSuggestions(this)" onblur="hideProductSuggestions(this)">
+                                <input type="hidden" name="itemProductId" value="">
                                 <div class="autocomplete-suggestions" style="display: none;"></div>
                             </div>
                             <input type="number" name="itemQuantity" placeholder="수량" min="1" value="1" required onchange="updateAmountCalculation()">
@@ -507,6 +509,7 @@
         </div>
     </div>
 
+    <script src="category-manager.js"></script>
     <script src="customer-detail.js"></script>
     <script src="repair-add.js"></script>
     <script src="repair-management.js"></script>

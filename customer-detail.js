@@ -118,6 +118,12 @@ function selectProduct(input, product) {
     input.value = product.name;
     input.dataset.productId = product.id;
     
+    // productId를 hidden 필드에 설정
+    const productIdInput = input.parentElement.querySelector('input[name="itemProductId"]');
+    if (productIdInput) {
+        productIdInput.value = product.id;
+    }
+    
     // 안전한 가격 처리
     const safePrice = product.price && !isNaN(product.price) ? Number(product.price) : 0;
     input.dataset.productPrice = safePrice;
@@ -499,7 +505,7 @@ function displayRepairs(repairs) {
             <td>${repair.warranty || '-'}</td>
             <td>
                 <div class="action-buttons">
-                    <button class="action-btn view-btn" onclick="showRepairDetailModal(${repair.id})">상세</button>
+                    <button class="action-btn view-btn" onclick="showRepairDetailModal(${JSON.stringify(repair).replace(/"/g, '&quot;')})">상세</button>
                     <button class="action-btn edit-btn" onclick="editRepair(${repair.id})">수정</button>
                     <button class="action-btn delete-btn" onclick="deleteRepair(${repair.id})">삭제</button>
                 </div>
@@ -522,7 +528,7 @@ function displayPurchases(purchases) {
     tbody.innerHTML = '';
     
     if (purchases.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #666;">구매 이력이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #666;">구매 이력이 없습니다.</td></tr>';
         return;
     }
     
@@ -548,13 +554,23 @@ function displayPurchases(purchases) {
             return Number(value).toLocaleString('ko-KR');
         };
         
+        // 공급가액과 부가세 계산 (공급가액 + 부가세 = 총금액)
+        const totalAmount = purchase.total_amount || 0;
+        const supplyPrice = Math.round(totalAmount / 1.1); // 공급가액 (총금액 ÷ 1.1)
+        const vatAmount = totalAmount - supplyPrice; // 부가세 (총금액 - 공급가액)
+        
+        // 계산 검증: 공급가액 + 부가세 = 총금액
+        console.log(`구매 ${purchase.purchase_code}: 총금액=${totalAmount}, 공급가액=${supplyPrice}, 부가세=${vatAmount}, 검증=${supplyPrice + vatAmount}`);
+        
         row.innerHTML = `
-            <td>${formatDate(purchase.purchase_date)}</td>
             <td>${purchase.purchase_code || '-'}</td>
+            <td>${formatDate(purchase.purchase_date)}</td>
             <td>${purchase.type || '-'}</td>
-            <td>${purchase.items ? purchase.items.length + '개 상품' : '0개 상품'}</td>
-            <td>${formatNumber(purchase.total_amount)}원</td>
+            <td>${formatNumber(supplyPrice)}원</td>
+            <td>${formatNumber(vatAmount)}원</td>
+            <td>${formatNumber(totalAmount)}원</td>
             <td>${purchase.payment_method || '-'}</td>
+            <td>${purchase.status || '완료'}</td>
             <td>
                 <div class="action-buttons">
                     <button class="action-btn view-btn" onclick="showPurchaseDetailModal(${purchase.id})">상세</button>
@@ -757,6 +773,7 @@ function addItem() {
     itemRow.innerHTML = `
         <div class="autocomplete-container">
             <input type="text" name="itemName" placeholder="제품명 입력..." required autocomplete="off" onkeyup="filterProducts(this)" onfocus="showProductSuggestions(this)" onblur="hideProductSuggestions(this)">
+            <input type="hidden" name="itemProductId" value="">
             <div class="autocomplete-suggestions" style="display: none;"></div>
         </div>
         <input type="number" name="itemQuantity" placeholder="수량" min="1" value="1" required onchange="updateAmountCalculation()">
@@ -837,7 +854,8 @@ document.getElementById('purchaseForm').addEventListener('submit', async (e) => 
     itemRows.forEach(row => {
         const input = row.querySelector('input[name="itemName"]');
         const name = input.value;
-        const productId = input.dataset.productId;
+        const productIdInput = row.querySelector('input[name="itemProductId"]');
+        const productId = productIdInput ? productIdInput.value : null;
         const quantity = parseInt(row.querySelector('input[name="itemQuantity"]').value);
         const unitPrice = parseInt(row.querySelector('input[name="itemUnitPrice"]').value);
         
@@ -853,6 +871,14 @@ document.getElementById('purchaseForm').addEventListener('submit', async (e) => 
     });
     
     purchaseData.items = items;
+    
+    // 구매 요청 데이터 로깅
+    console.log('=== 구매 요청 데이터 ===');
+    console.log('고객 ID:', purchaseData.customerId);
+    console.log('구매 코드:', purchaseData.purchaseCode);
+    console.log('구분:', purchaseData.type);
+    console.log('상품 목록:', items);
+    console.log('전체 구매 데이터:', purchaseData);
     
     // 부가세 정보 추가
     const taxOption = document.getElementById('taxOption').value;
@@ -885,6 +911,10 @@ document.getElementById('purchaseForm').addEventListener('submit', async (e) => 
         });
         
         const result = await response.json();
+        
+        console.log('=== 구매 요청 응답 ===');
+        console.log('응답 상태:', response.status);
+        console.log('응답 데이터:', result);
         
         if (result.success) {
             showMessage(result.message, 'success');

@@ -51,7 +51,7 @@ CREATE TABLE purchases (
     customer_id INTEGER NOT NULL,
     purchase_code TEXT UNIQUE,
     purchase_date DATETIME NOT NULL,
-    type TEXT NOT NULL CHECK (type IN ('판매', '매입', '선출고')),
+    type TEXT NOT NULL CHECK (type IN ('판매', '구매', '선출고')),
     total_amount INTEGER NOT NULL,
     payment_method TEXT,
     status TEXT DEFAULT '완료',
@@ -98,11 +98,13 @@ CREATE TABLE repairs (
 CREATE TABLE repair_parts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     repair_id INTEGER NOT NULL,
+    product_id INTEGER,  -- 제품 ID (외래키)
     name TEXT NOT NULL,
     quantity INTEGER NOT NULL,
     unit_price INTEGER NOT NULL,
     total_price INTEGER NOT NULL,
-    FOREIGN KEY (repair_id) REFERENCES repairs(id)
+    FOREIGN KEY (repair_id) REFERENCES repairs(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
 -- 수리 인건비 테이블
@@ -114,6 +116,17 @@ CREATE TABLE repair_labor (
     FOREIGN KEY (repair_id) REFERENCES repairs(id)
 );
 
+-- 방문 이력 테이블
+CREATE TABLE visits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL,
+    visit_date DATETIME NOT NULL,
+    purpose TEXT,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+);
+
 -- 인덱스 생성
 CREATE INDEX idx_customers_phone ON customers(phone);
 CREATE INDEX idx_customers_management_number ON customers(management_number);
@@ -123,3 +136,5 @@ CREATE INDEX idx_purchases_customer ON purchases(customer_id);
 CREATE INDEX idx_purchases_date ON purchases(purchase_date);
 CREATE INDEX idx_repairs_customer ON repairs(customer_id);
 CREATE INDEX idx_repairs_date ON repairs(repair_date);
+CREATE INDEX idx_visits_customer ON visits(customer_id);
+CREATE INDEX idx_visits_date ON visits(visit_date);

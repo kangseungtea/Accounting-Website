@@ -228,6 +228,8 @@ function updateLaborCalculation() {
 
 // 부품 데이터 로드
 function loadPartsData(partsData) {
+    console.log('loadPartsData 호출됨, 데이터:', partsData);
+    
     const partsList = document.getElementById('partsList');
     if (!partsList) {
         console.error('partsList 요소를 찾을 수 없습니다.');
@@ -237,9 +239,14 @@ function loadPartsData(partsData) {
     partsList.innerHTML = '';
     
     if (partsData && partsData.length > 0) {
+        console.log('부품 데이터 로드 시작, 개수:', partsData.length);
+        
         // 부품 데이터가 객체 배열인 경우 (수량, 단가 포함)
-        if (typeof partsData[0] === 'object' && partsData[0].name) {
+        if (typeof partsData[0] === 'object' && partsData[0].name !== undefined) {
+            console.log('객체 배열 형식의 부품 데이터 처리');
             partsData.forEach((part, index) => {
+                console.log(`부품 ${index + 1} 처리:`, part);
+                
                 const partRow = document.createElement('div');
                 partRow.className = 'part-row';
                 partRow.innerHTML = `
@@ -255,8 +262,11 @@ function loadPartsData(partsData) {
                 partsList.appendChild(partRow);
             });
         } else {
+            console.log('문자열 배열 형식의 부품 데이터 처리');
             // 부품 데이터가 문자열 배열인 경우 (기존 형식)
             partsData.forEach((partName, index) => {
+                console.log(`부품명 ${index + 1}:`, partName);
+                
                 const partRow = document.createElement('div');
                 partRow.className = 'part-row';
                 partRow.innerHTML = `
@@ -298,12 +308,14 @@ function loadPartsData(partsData) {
 
 // 인건비 데이터 로드
 function loadLaborData(laborData) {
+    console.log('loadLaborData 함수 호출됨, 데이터:', laborData);
     const laborList = document.getElementById('laborList');
     if (!laborList) {
         console.error('laborList 요소를 찾을 수 없습니다.');
         return;
     }
     
+    console.log('laborList 요소 찾음, 기존 내용 제거');
     laborList.innerHTML = '';
     
     if (laborData && laborData.length > 0) {
@@ -336,6 +348,7 @@ function loadLaborData(laborData) {
         }
     } else {
         // 인건비 데이터가 없는 경우 기본 행 하나 추가
+        console.log('인건비 데이터가 없음, 기본 행 생성');
         const laborRow = document.createElement('div');
         laborRow.className = 'labor-row';
         laborRow.innerHTML = `
@@ -345,6 +358,7 @@ function loadLaborData(laborData) {
             <button type="button" onclick="removeLabor(this)" class="btn btn-danger" style="padding: 8px 12px;">삭제</button>
         `;
         laborList.appendChild(laborRow);
+        console.log('기본 인건비 행 추가 완료');
     }
     
     // 계산 업데이트
@@ -544,6 +558,7 @@ function selectPart(input, product) {
     parts[parts.length - 1] = product.name;
     
     input.value = parts.join(', ');
+    input.dataset.productId = product.id;  // product_id 저장
     input.parentElement.querySelector('.autocomplete-suggestions').style.display = 'none';
     
     // 단가 자동 입력
@@ -694,15 +709,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 const name = nameInput.value.trim();
                 const quantity = parseInt(quantityInput.value) || 1;
                 const unitPrice = parseInt(unitPriceInput.value) || 0;
+                const productId = nameInput.dataset.productId || null;  // product_id 가져오기
                 
-                console.log(`부품 ${index + 1}:`, { name, quantity, unitPrice });
+                console.log(`부품 ${index + 1}:`, { name, quantity, unitPrice, productId });
                 
                 // 부품명이 비어있어도 저장 (빈 문자열로 저장)
                 parts.push({
                     name: name || '',  // 빈 문자열로 저장
                     quantity: quantity,
                     unitPrice: unitPrice,
-                    totalPrice: quantity * unitPrice
+                    totalPrice: quantity * unitPrice,
+                    productId: productId  // product_id 포함
                 });
                 console.log(`부품 ${index + 1} 저장됨:`, { name: name || '(빈 부품명)', quantity, unitPrice });
             });
@@ -738,6 +755,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             console.log('저장할 인건비 데이터:', labor);
             repairData.labor = labor;
+            repairData.parts = parts;  // 부품 데이터 추가
             
             // 부품 총액 계산
             let totalPartsCost = 0;
@@ -818,3 +836,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// 함수들을 전역으로 노출
+window.loadPartsData = loadPartsData;
+window.loadLaborData = loadLaborData;
+window.initializeSmartFeatures = initializeSmartFeatures;
+window.initializeModalDrag = initializeModalDrag;
