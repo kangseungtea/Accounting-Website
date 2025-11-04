@@ -437,7 +437,29 @@ function updateProductDetailCategories() {
     window.categoryManager.updateDetailCategoryOptions('productMainCategory', 'productSubCategory', 'productDetailCategory');
 }
 
-// 새 제품 등록 모달 표시
+// 새 제품 등록 모달 표시 (iframe 방식)
+function openProductAddModal() {
+    const modal = document.getElementById('productAddModal');
+    const frame = document.getElementById('productAddFrame');
+    
+    if (modal && frame) {
+        // iframe에 product-add.html 로드
+        frame.src = 'product-add.html';
+        modal.style.display = 'flex';
+    }
+}
+
+// 제품 등록 모달 닫기
+function closeProductAddModal() {
+    const modal = document.getElementById('productAddModal');
+    if (modal) {
+        modal.style.display = 'none';
+        // 제품 목록 새로고침
+        loadProducts();
+    }
+}
+
+// 새 제품 등록 모달 표시 (기존 모달 방식 - 사용 안 함)
 async function showAddProductModal() {
     document.getElementById('productModalTitle').textContent = '새 제품 등록';
     document.getElementById('productForm').reset();
